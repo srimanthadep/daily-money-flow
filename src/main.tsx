@@ -1,4 +1,5 @@
 import { createRoot } from "react-dom/client";
+<<<<<<< HEAD
 // @ts-ignore - Vite PWA virtual module
 import { registerSW } from 'virtual:pwa-register';
 import App from "./App.tsx";
@@ -16,4 +17,9 @@ const updateSW = registerSW({
   },
 });
 
+=======
+import App from "./App.tsx";
+import "./index.css";
+
+>>>>>>> c858d41a280eb1830d0b49e066a0a7ae053c50cc
 createRoot(document.getElementById("root")!).render(<App />);
