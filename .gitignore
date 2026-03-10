@@ -22,11 +22,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-<<<<<<< HEAD
 
 # Security
 .env
 .env.*
 !.env.example
-=======
->>>>>>> c858d41a280eb1830d0b49e066a0a7ae053c50cc
