@@ -15,9 +15,7 @@ import {
 } from "@/components/ui/table";
 
 export default function SQLConsole() {
-  const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    return sessionStorage.getItem("sql_console_auth") === "true";
-  });
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [password, setPassword] = useState("");
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<any[]>([]);
@@ -30,7 +28,6 @@ export default function SQLConsole() {
     const adminPassword = import.meta.env.VITE_ADMIN_PASSWORD || "1234";
     if (password === adminPassword) {
       setIsAuthenticated(true);
-      sessionStorage.setItem("sql_console_auth", "true");
       toast.success("Authenticated successfully");
     } else {
       toast.error("Incorrect password");
