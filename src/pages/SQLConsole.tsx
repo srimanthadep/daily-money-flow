@@ -15,11 +15,27 @@ import {
 } from "@/components/ui/table";
 
 export default function SQLConsole() {
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    return sessionStorage.getItem("sql_console_auth") === "true";
+  });
+  const [password, setPassword] = useState("");
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<any[]>([]);
   const [columns, setColumns] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    const adminPassword = import.meta.env.VITE_ADMIN_PASSWORD || "1234";
+    if (password === adminPassword) {
+      setIsAuthenticated(true);
+      sessionStorage.setItem("sql_console_auth", "true");
+      toast.success("Authenticated successfully");
+    } else {
+      toast.error("Incorrect password");
+    }
+  };
 
   const runQuery = async () => {
     if (!query.trim()) return;
@@ -77,6 +93,48 @@ export default function SQLConsole() {
     link.click();
     document.body.removeChild(link);
   };
+
+  if (!isAuthenticated) {
+    return (
+      <div className="bg-slate-50 min-h-screen flex items-center justify-center p-6">
+        <div className="max-w-md w-full animate-in fade-in zoom-in duration-300">
+          <div className="bg-white p-8 rounded-[2rem] shadow-xl border border-slate-100 flex flex-col items-center text-center space-y-6">
+            <div className="p-4 bg-indigo-50 rounded-2xl">
+              <Database className="w-8 h-8 text-indigo-600" />
+            </div>
+            
+            <div className="space-y-2">
+              <h1 className="text-2xl font-bold text-slate-900">Console Locked</h1>
+              <p className="text-slate-500 text-sm">Please enter the administrator password to access the SQL console.</p>
+            </div>
+
+            <form onSubmit={handleLogin} className="w-full space-y-4">
+              <div className="space-y-2 text-left">
+                <Label htmlFor="pass" className="text-[10px] font-bold uppercase tracking-wider text-slate-400 ml-1">Password</Label>
+                <Input 
+                  id="pass"
+                  type="password" 
+                  autoFocus
+                  placeholder="••••••••" 
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="rounded-xl border-slate-200 h-11 focus:ring-indigo-500"
+                />
+              </div>
+              <Button type="submit" className="w-full h-11 bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-lg shadow-indigo-100">
+                Unlock Console
+              </Button>
+            </form>
+            
+            <p className="text-[11px] text-slate-400 flex items-center gap-1.5">
+              <AlertCircle className="w-3.5 h-3.5" />
+              Direct database access requires authorization.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-slate-50 min-h-screen">
