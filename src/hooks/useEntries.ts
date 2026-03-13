@@ -56,6 +56,22 @@ export function useEntries() {
     }
   }, []);
 
+  const lockDate = useCallback((date: string, password?: string) => {
+    const adminPassword = import.meta.env.VITE_ADMIN_PASSWORD || "1234";
+    if (password === adminPassword) {
+      setForceUnlocked(prev => {
+        const next = { ...prev };
+        delete next[date];
+        return next;
+      });
+      toast.success("Date locked successfully");
+      return true;
+    } else {
+      toast.error("Incorrect password");
+      return false;
+    }
+  }, []);
+
   // ── Read / write helpers for Local Fallback ──────────────────────────────
   const readLocalSnap = (date: string): LedgerEntry[] | null => {
     const raw = localStorage.getItem(SNAP + date);
@@ -327,6 +343,7 @@ export function useEntries() {
     isToday,
     isLocked,
     unlockDate,
+    lockDate,
     unlockedUntil: forceUnlocked[viewDate],
     snapDates,
     searchQuery,
