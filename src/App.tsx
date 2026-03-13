@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import Index from "./pages/Index.tsx";
 import ExpensesPage from "./pages/Expenses.tsx";
+import SQLConsole from "./pages/SQLConsole.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import { MainLayout } from "./components/MainLayout.tsx";
 
@@ -20,6 +21,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/expenses" element={<ExpensesPage />} />
+            <Route path="/sql-console" element={<SQLConsole />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </MainLayout>

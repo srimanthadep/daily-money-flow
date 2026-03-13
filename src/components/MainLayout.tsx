@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { ReceiptText, IndianRupee, CloudOff } from "lucide-react";
+import { ReceiptText, IndianRupee, CloudOff, Database } from "lucide-react";
 import InstallPromptBanner from "./InstallPromptBanner";
 import { useOfflineSync } from "@/hooks/useOfflineSync";
 
@@ -14,6 +14,7 @@ export function MainLayout({ children }: Props) {
   const navItems = [
     { name: "Tracker", path: "/", icon: IndianRupee },
     { name: "Expenses", path: "/expenses", icon: ReceiptText },
+    { name: "SQL Console", path: "/sql-console", icon: Database },
   ];
 
   return (
