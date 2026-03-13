@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Plus, Search, Filter, Trash2, Loader2, IndianRupee, ReceiptText } from "lucide-react";
+import { Plus, Search, Filter, Trash2, IndianRupee, ReceiptText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,6 +20,8 @@ import {
 import { EXPENSE_CATEGORIES } from "@/types/entry";
 import { format } from "date-fns";
 import { useExpenses } from "@/hooks/useExpenses";
+import { TableSkeleton } from "@/components/TableSkeleton";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const ExpensesPage = () => {
   const { expenses, loading, addExpense, deleteExpense } = useExpenses();
@@ -83,105 +85,104 @@ const ExpensesPage = () => {
           <Plus className="w-4 h-4" /> Add Expense
         </Button>
       </div>
+      
+      {loading ? (
+        <TableSkeleton />
+      ) : (
+        <>
+          {/* Summary Stat */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm relative overflow-hidden group">
+              <div className="absolute top-0 left-0 w-1 h-full bg-orange-500" />
+              <div className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Total Spent</div>
+              <div className="text-3xl font-black text-slate-900">₹{totalAmount.toLocaleString("en-IN")}</div>
+              <p className="text-[10px] text-slate-400 mt-2 font-medium uppercase">{filteredExpenses.length} TRANSACTIONS</p>
+            </div>
+          </div>
 
-      {/* Summary Stat */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm relative overflow-hidden group">
-          <div className="absolute top-0 left-0 w-1 h-full bg-orange-500" />
-          <div className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Total Spent</div>
-          <div className="text-3xl font-black text-slate-900">₹{totalAmount.toLocaleString("en-IN")}</div>
-          <p className="text-[10px] text-slate-400 mt-2 font-medium uppercase">{filteredExpenses.length} TRANSACTIONS</p>
-        </div>
-      </div>
+          {/* Filters */}
+          <div className="bg-white p-3 rounded-2xl border border-slate-100 shadow-sm flex flex-wrap gap-3 items-center">
+            <div className="relative flex-1 min-w-[200px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
+              <Input 
+                placeholder="Search descriptions..." 
+                className="pl-9 h-11 border-transparent bg-slate-50/50 focus:bg-white focus:ring-0 transition-all rounded-xl"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+            <Select value={filterCategory} onValueChange={setFilterCategory}>
+              <SelectTrigger className="w-[180px] h-11 border-transparent bg-slate-50/50 rounded-xl focus:ring-0">
+                <Filter className="w-3.5 h-3.5 mr-2 text-slate-400" />
+                <SelectValue placeholder="Category" />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl border-slate-100 shadow-xl">
+                <SelectItem value="all">All Categories</SelectItem>
+                {EXPENSE_CATEGORIES.map(c => (
+                  <SelectItem key={c} value={c}>{c}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
-      {/* Filters */}
-      <div className="bg-white p-3 rounded-2xl border border-slate-100 shadow-sm flex flex-wrap gap-3 items-center">
-        <div className="relative flex-1 min-w-[200px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
-          <Input 
-            placeholder="Search descriptions..." 
-            className="pl-9 h-11 border-transparent bg-slate-50/50 focus:bg-white focus:ring-0 transition-all rounded-xl"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
-        <Select value={filterCategory} onValueChange={setFilterCategory}>
-          <SelectTrigger className="w-[180px] h-11 border-transparent bg-slate-50/50 rounded-xl focus:ring-0">
-            <Filter className="w-3.5 h-3.5 mr-2 text-slate-400" />
-            <SelectValue placeholder="Category" />
-          </SelectTrigger>
-          <SelectContent className="rounded-xl border-slate-100 shadow-xl">
-            <SelectItem value="all">All Categories</SelectItem>
-            {EXPENSE_CATEGORIES.map(c => (
-              <SelectItem key={c} value={c}>{c}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Table */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse">
-            <thead>
-              <tr className="bg-slate-50/30 border-b border-slate-50">
-                <th className="px-6 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-widest text-left">Date</th>
-                <th className="px-6 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-widest text-left">Description</th>
-                <th className="px-6 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-widest text-left">Category</th>
-                <th className="px-6 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-widest text-right">Amount</th>
-                <th className="px-6 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-widest text-right">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr>
-                  <td colSpan={5} className="px-6 py-20 text-center">
-                    <Loader2 className="w-6 h-6 animate-spin mx-auto text-primary" />
-                    <p className="text-sm text-slate-400 mt-2 font-medium">Loading your expenses...</p>
-                  </td>
-                </tr>
-              ) : filteredExpenses.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="px-6 py-20 text-center">
-                    <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-3">
-                      <ReceiptText className="w-6 h-6 text-slate-300" />
-                    </div>
-                    <p className="text-slate-400 font-medium text-sm">No expenses match your search.</p>
-                  </td>
-                </tr>
-              ) : (
-                filteredExpenses.map((e) => (
-                  <tr key={e.id} className="border-b border-slate-50 hover:bg-slate-50/30 transition-colors group">
-                    <td className="px-6 py-5 text-[13px] text-slate-400 font-bold whitespace-nowrap">
-                      {format(new Date(e.date), "dd/MM/yyyy")}
-                    </td>
-                    <td className="px-6 py-5">
-                      <div className="font-bold text-[14px] text-slate-800">{e.title}</div>
-                      {e.notes && <div className="text-[12px] text-slate-400 font-medium">{e.notes}</div>}
-                    </td>
-                    <td className="px-6 py-5">
-                      <span className="text-[11px] px-3 py-1 rounded-full bg-slate-100 text-slate-500 font-black uppercase tracking-tight">
-                        {e.category}
-                      </span>
-                    </td>
-                    <td className="px-6 py-5 text-right font-black text-[15px] text-slate-800">
-                      ₹{e.amount.toLocaleString("en-IN")}
-                    </td>
-                    <td className="px-6 py-5 text-right">
-                      <button 
-                        onClick={() => deleteExpense(e.id)}
-                        className="text-slate-300 hover:text-red-500 transition-all p-1.5 hover:bg-red-50 rounded-lg"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </td>
+          {/* Table */}
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="bg-slate-50/30 border-b border-slate-50">
+                    <th className="px-6 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-widest text-left">Date</th>
+                    <th className="px-6 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-widest text-left">Description</th>
+                    <th className="px-6 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-widest text-left">Category</th>
+                    <th className="px-6 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-widest text-right">Amount</th>
+                    <th className="px-6 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-widest text-right">Action</th>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+                </thead>
+                <tbody>
+                  {filteredExpenses.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="px-6 py-20 text-center">
+                        <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-3">
+                          <ReceiptText className="w-6 h-6 text-slate-300" />
+                        </div>
+                        <p className="text-slate-400 font-medium text-sm">No expenses match your search.</p>
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredExpenses.map((e) => (
+                      <tr key={e.id} className="border-b border-slate-50 hover:bg-slate-50/30 transition-colors group">
+                        <td className="px-6 py-5 text-[13px] text-slate-400 font-bold whitespace-nowrap">
+                          {format(new Date(e.date), "dd/MM/yyyy")}
+                        </td>
+                        <td className="px-6 py-5">
+                          <div className="font-bold text-[14px] text-slate-800">{e.title}</div>
+                          {e.notes && <div className="text-[12px] text-slate-400 font-medium">{e.notes}</div>}
+                        </td>
+                        <td className="px-6 py-5">
+                          <span className="text-[11px] px-3 py-1 rounded-full bg-slate-100 text-slate-500 font-black uppercase tracking-tight">
+                            {e.category}
+                          </span>
+                        </td>
+                        <td className="px-6 py-5 text-right font-black text-[15px] text-slate-800">
+                          ₹{e.amount.toLocaleString("en-IN")}
+                        </td>
+                        <td className="px-6 py-5 text-right">
+                          <button 
+                            onClick={() => deleteExpense(e.id)}
+                            className="text-slate-300 hover:text-red-500 transition-all p-1.5 hover:bg-red-50 rounded-lg"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Add Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -209,6 +210,7 @@ const ExpensesPage = () => {
                   placeholder="0" 
                   className="rounded-xl border-slate-100 h-11 font-bold"
                   value={newExpense.amount}
+                  onWheel={(e) => e.currentTarget.blur()}
                   onChange={(e) => setNewExpense({...newExpense, amount: e.target.value})}
                 />
               </div>

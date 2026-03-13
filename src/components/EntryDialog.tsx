@@ -92,6 +92,7 @@ export function EntryDialog({
               onChange={(e) => setAmount(e.target.value)}
               placeholder="0"
               className="mt-1 font-mono text-lg"
+              onWheel={(e) => e.currentTarget.blur()}
               onKeyDown={(e) => e.key === "Enter" && handleSave()}
             />
           </div>

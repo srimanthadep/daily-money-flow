@@ -87,6 +87,7 @@ function EditableCell({
       value={draft}
       onChange={(e) => setDraft(e.target.value)}
       onBlur={commit}
+      onWheel={(e) => e.currentTarget.blur()}
       onKeyDown={(e) => {
         if (e.key === "Enter") commit();
         if (e.key === "Escape") {

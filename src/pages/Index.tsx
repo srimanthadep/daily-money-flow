@@ -14,6 +14,8 @@ import { EntryTable } from "@/components/EntryTable";
 import { SearchFilter } from "@/components/SearchFilter";
 import { TrashDialog } from "@/components/TrashDialog";
 import { PasswordPrompt } from "@/components/PasswordPrompt";
+import { TableSkeleton } from "@/components/TableSkeleton";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useEntries } from "@/hooks/useEntries";
 import { useExpenses } from "@/hooks/useExpenses";
 import { exportToCSV, exportToExcel } from "@/lib/export";
@@ -118,11 +120,16 @@ const Index = () => {
 
   if (isLoading) {
     return (
-      <div className="flex h-[80vh] items-center justify-center">
-        <div className="flex flex-col items-center gap-2">
-          <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm font-medium text-slate-500">Loading ledger...</p>
-        </div>
+      <div className="bg-slate-50 min-h-screen">
+        <main className="container py-8 space-y-6 max-w-5xl">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+            <div className="space-y-2">
+              <Skeleton className="h-8 w-48" />
+              <Skeleton className="h-4 w-64" />
+            </div>
+          </div>
+          <TableSkeleton />
+        </main>
       </div>
     );
   }
