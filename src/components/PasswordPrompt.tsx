@@ -14,7 +14,7 @@ import { Lock } from "lucide-react";
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onConfirm: (password: string, hours: number) => boolean;
+  onConfirm: (password: string, hours: number) => boolean | Promise<boolean>;
   mode?: 'unlock' | 'lock';
 }
 
@@ -34,8 +34,8 @@ export function PasswordPrompt({
     }
   }, [open]);
 
-  const handleConfirm = () => {
-    const success = onConfirm(password, parseFloat(hours) || 1);
+  const handleConfirm = async () => {
+    const success = await onConfirm(password, parseFloat(hours) || 1);
     if (success) {
       onOpenChange(false);
     }

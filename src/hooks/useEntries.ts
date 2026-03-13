@@ -27,7 +27,12 @@ export function useEntries() {
 
   const isToday = viewDate === todayDate;
 
-  const [forceUnlocked, setForceUnlocked] = useState<Record<string, number>>({});
+  const UNLOCK_KEY = "ledger-unlocked-v2";
+
+  const [forceUnlocked, setForceUnlocked] = useState<Record<string, number>>(() => {
+    const local = localStorage.getItem(UNLOCK_KEY);
+    return local ? JSON.parse(local) : {};
+  });
 
   const isLocked = useMemo(() => {
     const expiration = forceUnlocked[viewDate];
@@ -43,34 +48,56 @@ export function useEntries() {
     return now >= lockTime;
   }, [viewDate, forceUnlocked]);
 
-  const unlockDate = useCallback((date: string, password?: string, hours: number = 1) => {
+  const saveUnlockState = async (date: string, expiresAt: number | null) => {
+    setForceUnlocked(prev => {
+      const next = { ...prev };
+      if (expiresAt === null) {
+        delete next[date];
+      } else {
+        next[date] = expiresAt;
+      }
+      localStorage.setItem(UNLOCK_KEY, JSON.stringify(next));
+      return next;
+    });
+
+    if (isConfigured) {
+      if (expiresAt === null) {
+        await supabase.from("unlocked_dates").delete().eq("date", date);
+      } else {
+        const { data: user } = await supabase.auth.getUser();
+        await supabase.from("unlocked_dates").upsert({
+          date,
+          expires_at: expiresAt,
+          user_id: user?.user?.id
+        }, { onConflict: 'date' });
+      }
+    }
+  };
+
+  const unlockDate = useCallback(async (date: string, password?: string, hours: number = 1) => {
     const adminPassword = import.meta.env.VITE_ADMIN_PASSWORD || "1234";
     if (password === adminPassword) {
       const expiration = Date.now() + (hours * 3600000);
-      setForceUnlocked(prev => ({ ...prev, [date]: expiration }));
+      await saveUnlockState(date, expiration);
       toast.success(`Date unlocked for ${hours} hour${hours > 1 ? 's' : ''}`);
       return true;
     } else {
       toast.error("Incorrect password");
       return false;
     }
-  }, []);
+  }, [isConfigured]);
 
-  const lockDate = useCallback((date: string, password?: string) => {
+  const lockDate = useCallback(async (date: string, password?: string) => {
     const adminPassword = import.meta.env.VITE_ADMIN_PASSWORD || "1234";
     if (password === adminPassword) {
-      setForceUnlocked(prev => {
-        const next = { ...prev };
-        delete next[date];
-        return next;
-      });
+      await saveUnlockState(date, null);
       toast.success("Date locked successfully");
       return true;
     } else {
       toast.error("Incorrect password");
       return false;
     }
-  }, []);
+  }, [isConfigured]);
 
   // ── Read / write helpers for Local Fallback ──────────────────────────────
   const readLocalSnap = (date: string): LedgerEntry[] | null => {
@@ -140,6 +167,23 @@ export function useEntries() {
           .select("date")
           .order("date", { ascending: false });
         if (snaps) setSnapDates(snaps.map(s => s.date));
+
+        // Sync unlocked dates from Supabase
+        const { data: unlocked } = await supabase
+          .from("unlocked_dates")
+          .select("*")
+          .gt("expires_at", Date.now());
+        
+        if (unlocked) {
+          const remoteMap: Record<string, number> = {};
+          unlocked.forEach(u => remoteMap[u.date] = Number(u.expires_at));
+          
+          setForceUnlocked(prev => {
+            const next = { ...prev, ...remoteMap };
+            localStorage.setItem(UNLOCK_KEY, JSON.stringify(next));
+            return next;
+          });
+        }
       } else if (snapDates.length === 0) {
         setSnapDates(Array.from(new Set([...getLocalSnapDates(), todayDate])).sort().reverse());
       }
