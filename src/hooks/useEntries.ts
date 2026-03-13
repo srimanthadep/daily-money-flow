@@ -27,6 +27,35 @@ export function useEntries() {
 
   const isToday = viewDate === todayDate;
 
+  const [forceUnlocked, setForceUnlocked] = useState<Record<string, number>>({});
+
+  const isLocked = useMemo(() => {
+    const expiration = forceUnlocked[viewDate];
+    if (expiration && Date.now() < expiration) return false;
+    
+    // A date is locked if current time is >= (viewDate + 1 day) at 03:00 AM
+    const now = new Date();
+    const viewDateObj = new Date(viewDate + "T00:00:00");
+    const lockTime = new Date(viewDateObj);
+    lockTime.setDate(lockTime.getDate() + 1);
+    lockTime.setHours(3, 0, 0, 0);
+    
+    return now >= lockTime;
+  }, [viewDate, forceUnlocked]);
+
+  const unlockDate = useCallback((date: string, password?: string, hours: number = 1) => {
+    const adminPassword = import.meta.env.VITE_ADMIN_PASSWORD || "1234";
+    if (password === adminPassword) {
+      const expiration = Date.now() + (hours * 3600000);
+      setForceUnlocked(prev => ({ ...prev, [date]: expiration }));
+      toast.success(`Date unlocked for ${hours} hour${hours > 1 ? 's' : ''}`);
+      return true;
+    } else {
+      toast.error("Incorrect password");
+      return false;
+    }
+  }, []);
+
   // ── Read / write helpers for Local Fallback ──────────────────────────────
   const readLocalSnap = (date: string): LedgerEntry[] | null => {
     const raw = localStorage.getItem(SNAP + date);
@@ -57,7 +86,7 @@ export function useEntries() {
             .eq("date", date)
             .maybeSingle();
           
-          if (data) return data.data as LedgerEntry[];
+          if (data && data.data && (data.data as LedgerEntry[]).length > 0) return data.data as LedgerEntry[];
 
           // Try most recent before
           const { data: latestBefore } = await supabase
@@ -68,19 +97,24 @@ export function useEntries() {
             .limit(1)
             .maybeSingle();
           
-          if (latestBefore) return latestBefore.data as LedgerEntry[];
+          if (latestBefore && latestBefore.data && (latestBefore.data as LedgerEntry[]).length > 0) return latestBefore.data as LedgerEntry[];
         }
 
         const local = readLocalSnap(date);
-        if (local) return local;
+        if (local && local.length > 0) return local;
 
         const localDates = getLocalSnapDates().filter(d => d < date).sort().reverse();
-        if (localDates.length > 0) return readLocalSnap(localDates[0]) || SEED_DATA;
+        if (localDates.length > 0) {
+          const prevData = readLocalSnap(localDates[0]);
+          if (prevData && prevData.length > 0) return prevData;
+        }
 
         return SEED_DATA;
       };
 
       const result = await loadFromStorage(viewDate);
+      // Ensure we don't save seed data back immediately for future dates 
+      // unless the user actually interacts with it, but for now we set it.
       setEntries(result);
       
       // Load snap dates once
@@ -291,6 +325,9 @@ export function useEntries() {
     setViewDate,
     todayDate,
     isToday,
+    isLocked,
+    unlockDate,
+    unlockedUntil: forceUnlocked[viewDate],
     snapDates,
     searchQuery,
     setSearchQuery,
