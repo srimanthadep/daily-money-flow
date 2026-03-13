@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { addDays, subDays } from "date-fns";
 import { Plus, Download, Trash2, Undo2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -112,6 +113,15 @@ const Index = () => {
       if (e.key === "z" && (e.ctrlKey || e.metaKey) && canUndo && !isLocked) {
         e.preventDefault();
         undo();
+      }
+
+      // Left Arrow = Previous Day
+      if (e.key === "ArrowLeft") {
+        setViewDate(prev => subDays(new Date(prev), 1).toISOString().split('T')[0]);
+      }
+      // Right Arrow = Next Day
+      if (e.key === "ArrowRight") {
+        setViewDate(prev => addDays(new Date(prev), 1).toISOString().split('T')[0]);
       }
     };
     window.addEventListener("keydown", handler);
