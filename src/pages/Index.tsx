@@ -8,14 +8,14 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { DashboardSummary } from "@/components/DashboardSummary";
-import { DateNavigator } from "@/components/DateNavigator";
-import { EntryDialog } from "@/components/EntryDialog";
-import { EntryTable } from "@/components/EntryTable";
-import { SearchFilter } from "@/components/SearchFilter";
-import { TrashDialog } from "@/components/TrashDialog";
-import { PasswordPrompt } from "@/components/PasswordPrompt";
-import { TableSkeleton } from "@/components/TableSkeleton";
+import { DashboardSummary } from "@/components/tracker/DashboardSummary";
+import { DateNavigator } from "@/components/tracker/DateNavigator";
+import { EntryDialog } from "@/components/tracker/EntryDialog";
+import { EntryTable } from "@/components/tracker/EntryTable";
+import { SearchFilter } from "@/components/tracker/SearchFilter";
+import { TrashDialog } from "@/components/tracker/TrashDialog";
+import { PasswordPrompt } from "@/components/auth/PasswordPrompt";
+import { TableSkeleton } from "@/components/tracker/TableSkeleton";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useEntries } from "@/hooks/useEntries";
 import { useExpenses } from "@/hooks/useExpenses";

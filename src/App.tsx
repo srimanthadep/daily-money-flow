@@ -7,7 +7,7 @@ import Index from "./pages/Index.tsx";
 import ExpensesPage from "./pages/Expenses.tsx";
 import SQLConsole from "./pages/SQLConsole.tsx";
 import NotFound from "./pages/NotFound.tsx";
-import { MainLayout } from "./components/MainLayout.tsx";
+import { MainLayout } from "./components/layout/MainLayout.tsx";
 
 const queryClient = new QueryClient();
 

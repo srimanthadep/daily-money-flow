@@ -20,7 +20,7 @@ import {
 import { EXPENSE_CATEGORIES } from "@/types/entry";
 import { format } from "date-fns";
 import { useExpenses } from "@/hooks/useExpenses";
-import { TableSkeleton } from "@/components/TableSkeleton";
+import { TableSkeleton } from "@/components/tracker/TableSkeleton";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const ExpensesPage = () => {

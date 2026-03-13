@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { LedgerEntry } from "@/types/entry";
-import { format } from "date-fns";
+import { format, subDays } from "date-fns";
 import { SEED_DATA } from "@/lib/seedData";
 import { arrayMove } from "@dnd-kit/sortable";
 import { supabase, isConfigured } from "@/lib/supabase";
@@ -12,6 +12,16 @@ const TRASH_KEY = "ledger-trash";
 
 function getToday(): string {
   return format(new Date(), "yyyy-MM-dd");
+}
+
+function checkIsDateLocked(date: string): boolean {
+  // A date is locked if current time is >= (date + 1 day) at 03:00 AM
+  const now = new Date();
+  const dateObj = new Date(date + "T00:00:00");
+  const lockTime = new Date(dateObj);
+  lockTime.setDate(lockTime.getDate() + 1);
+  lockTime.setHours(3, 0, 0, 0);
+  return now >= lockTime;
 }
 
 export function useEntries() {
@@ -37,15 +47,7 @@ export function useEntries() {
   const isLocked = useMemo(() => {
     const expiration = forceUnlocked[viewDate];
     if (expiration && Date.now() < expiration) return false;
-    
-    // A date is locked if current time is >= (viewDate + 1 day) at 03:00 AM
-    const now = new Date();
-    const viewDateObj = new Date(viewDate + "T00:00:00");
-    const lockTime = new Date(viewDateObj);
-    lockTime.setDate(lockTime.getDate() + 1);
-    lockTime.setHours(3, 0, 0, 0);
-    
-    return now >= lockTime;
+    return checkIsDateLocked(viewDate);
   }, [viewDate, forceUnlocked]);
 
   const saveUnlockState = async (date: string, expiresAt: number | null) => {
@@ -131,28 +133,52 @@ export function useEntries() {
           
           if (data && data.data && (data.data as LedgerEntry[]).length > 0) return data.data as LedgerEntry[];
 
-          // Try most recent before
+          // 1. If we don't have a snapshot, check if the Previous Day is locked
+          const dateObj = new Date(date + "T00:00:00");
+          const prevDateStr = format(subDays(dateObj, 1), "yyyy-MM-dd");
+          const isPrevLocked = checkIsDateLocked(prevDateStr);
+
+          // 2. If the previous day is NOT locked, this is a future or currently active date.
+          // Do NOT carry over yet to prevent pollution.
+          if (!isPrevLocked) return [];
+
+          // 3. Previous day IS locked. Find the most recent strictly LOCKED date before with data.
           const { data: latestBefore } = await supabase
             .from("daily_snapshots")
-            .select("data")
+            .select("date, data")
             .lt("date", date)
-            .order("date", { ascending: false })
-            .limit(1)
-            .maybeSingle();
+            .order("date", { ascending: false });
           
-          if (latestBefore && latestBefore.data && (latestBefore.data as LedgerEntry[]).length > 0) return latestBefore.data as LedgerEntry[];
+          if (latestBefore && latestBefore.length > 0) {
+            const lockedSnap = latestBefore.find(s => checkIsDateLocked(s.date));
+            if (lockedSnap && lockedSnap.data && (lockedSnap.data as LedgerEntry[]).length > 0) {
+              return lockedSnap.data as LedgerEntry[];
+            }
+          }
         }
 
         const local = readLocalSnap(date);
         if (local && local.length > 0) return local;
 
+        // Local fallback logic
+        const dateObj = new Date(date + "T00:00:00");
+        const prevDateStr = format(subDays(dateObj, 1), "yyyy-MM-dd");
+        if (!checkIsDateLocked(prevDateStr)) return [];
+
         const localDates = getLocalSnapDates().filter(d => d < date).sort().reverse();
-        if (localDates.length > 0) {
-          const prevData = readLocalSnap(localDates[0]);
-          if (prevData && prevData.length > 0) return prevData;
+        for (const ld of localDates) {
+          if (checkIsDateLocked(ld)) {
+            const prevData = readLocalSnap(ld);
+            if (prevData && prevData.length > 0) return prevData;
+          }
         }
 
-        return SEED_DATA;
+        // Only use SEED_DATA if it's the current "today" and we have literally no history
+        if (date === todayDate && getLocalSnapDates().length === 0) {
+          return SEED_DATA;
+        }
+
+        return [];
       };
 
       const result = await loadFromStorage(viewDate);
