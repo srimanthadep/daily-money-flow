@@ -8,6 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useUser } from "@clerk/react";
 import { DashboardSummary } from "@/components/tracker/DashboardSummary";
 import { DateNavigator } from "@/components/tracker/DateNavigator";
 import { EntryDialog } from "@/components/tracker/EntryDialog";
@@ -22,6 +23,7 @@ import { useExpenses } from "@/hooks/useExpenses";
 import { exportToCSV, exportToExcel } from "@/lib/export";
 
 const Index = () => {
+  const { user } = useUser();
   const {
     entries,
     filteredEntries,
@@ -150,7 +152,9 @@ const Index = () => {
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold tracking-tight text-slate-900 leading-tight">Welcome, Upender!</h1>
+              <h1 className="text-2xl font-bold tracking-tight text-slate-900 leading-tight">
+                Welcome, {user?.firstName || user?.username || "User"}!
+              </h1>
               {isLocked ? (
                 <button 
                   onClick={() => {
