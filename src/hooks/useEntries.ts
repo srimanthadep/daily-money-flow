@@ -175,8 +175,8 @@ export function useEntries() {
           }
         }
 
-        // Only use SEED_DATA if it's the current "today" and we have literally no history
-        if (date === todayDate && getLocalSnapDates().length === 0) {
+        // Only use SEED_DATA if it's the current "today", we have no history, AND we are in local mode
+        if (date === todayDate && getLocalSnapDates().length === 0 && userId === 'local') {
           return SEED_DATA;
         }
 
