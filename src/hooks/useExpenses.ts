@@ -47,64 +47,68 @@ export function useExpenses() {
   };
 
   const addExpense = async (expense: Omit<Expense, "id" | "createdAt" | "updatedAt">) => {
+    const tempId = crypto.randomUUID();
+    const now = new Date().toISOString();
     const localExp: Expense = {
       ...expense,
-      id: crypto.randomUUID(),
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      id: tempId,
+      createdAt: now,
+      updatedAt: now,
     };
 
+    // Optimistic Update
+    const previousExpenses = [...expenses];
+    setExpenses(prev => [localExp, ...prev]);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify([localExp, ...expenses]));
+
+    if (!isConfigured || !user) {
+      toast.success("Expense saved locally");
+      return localExp;
+    }
+
     try {
-      if (!isConfigured || !user) {
-        const updated = [localExp, ...expenses];
-        setExpenses(updated);
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-        toast.success("Expense saved locally");
-        return localExp;
-      }
-
-      const newExp = {
-        ...expense,
-        user_id: user.id,
-      };
-
       const { data, error } = await supabase
         .from("expenses")
-        .insert([newExp])
+        .insert([{ ...expense, user_id: user.id }])
         .select();
 
       if (error) throw error;
 
       const saved = data[0];
-      setExpenses([saved, ...expenses]);
-      toast.success("Expense added and synced");
-      
-      localStorage.setItem(STORAGE_KEY, JSON.stringify([saved, ...expenses]));
+      // Replace temp entry with server entry
+      setExpenses(prev => prev.map(e => e.id === tempId ? saved : e));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify([saved, ...previousExpenses]));
+      toast.success("Expense added");
       return saved;
     } catch (err: any) {
-      toast.error("Cloud sync failed. Saved locally.");
-      const updated = [localExp, ...expenses];
-      setExpenses(updated);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+      console.error("Supabase Save Error:", err);
+      // Rollback on error
+      setExpenses(previousExpenses);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(previousExpenses));
+      toast.error("Sync failed. Transaction reverted.");
     }
   };
 
   const deleteExpense = async (id: string) => {
-    try {
-      if (isConfigured) {
-        const { error } = await supabase.from("expenses").delete().eq("id", id);
-        if (error) throw error;
-      }
+    const previousExpenses = [...expenses];
+    setExpenses(prev => prev.filter(e => e.id !== id));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(expenses.filter(e => e.id !== id)));
 
-      const updated = expenses.filter(e => e.id !== id);
-      setExpenses(updated);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    if (!isConfigured || !user) {
+      toast.success("Deleted locally");
+      return;
+    }
+
+    try {
+      const { error } = await supabase.from("expenses").delete().eq("id", id);
+      if (error) throw error;
       toast.success("Expense deleted");
     } catch (err: any) {
-      toast.error("Cloud delete failed. Deleted locally.");
-      const updated = expenses.filter(e => e.id !== id);
-      setExpenses(updated);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+      console.error("Supabase Delete Error:", err);
+      // Rollback on error
+      setExpenses(previousExpenses);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(previousExpenses));
+      toast.error("Delete failed. Reverted.");
     }
   };
 

@@ -23,9 +23,15 @@ export default function SQLConsole() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const isEnabled = import.meta.env.VITE_ENABLE_SQL_CONSOLE === "true";
+
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    const adminPassword = import.meta.env.VITE_ADMIN_PASSWORD || "1234";
+    const adminPassword = import.meta.env.VITE_ADMIN_PASSWORD;
+    if (!adminPassword) {
+      toast.error("Admin password not configured in .env");
+      return;
+    }
     if (password === adminPassword) {
       setIsAuthenticated(true);
       toast.success("Authenticated successfully");
@@ -90,6 +96,21 @@ export default function SQLConsole() {
     link.click();
     document.body.removeChild(link);
   };
+
+  if (!isEnabled) {
+    return (
+      <div className="bg-slate-50 min-h-screen flex items-center justify-center p-6 text-center">
+        <div className="max-w-md bg-white p-10 rounded-3xl border border-slate-100 shadow-sm space-y-4">
+          <div className="p-3 bg-amber-50 text-amber-600 rounded-full w-fit mx-auto">
+            <AlertCircle className="w-8 h-8" />
+          </div>
+          <h1 className="text-xl font-bold text-slate-900">SQL Console Disabled</h1>
+          <p className="text-sm text-slate-500">This administrative tool is disabled for security. Enable it via environment variables if needed.</p>
+          <Button variant="outline" onClick={() => window.location.href = "/"} className="rounded-xl px-8">Back to Dashboard</Button>
+        </div>
+      </div>
+    );
+  }
 
   if (!isAuthenticated) {
     return (

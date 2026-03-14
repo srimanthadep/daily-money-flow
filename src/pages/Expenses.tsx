@@ -1,5 +1,5 @@
-import { useState, useMemo } from "react";
-import { Plus, Search, Filter, Trash2, IndianRupee, ReceiptText } from "lucide-react";
+import { useState } from "react";
+import { Plus, Trash2, IndianRupee, ReceiptText, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,13 +21,11 @@ import { EXPENSE_CATEGORIES } from "@/types/entry";
 import { format } from "date-fns";
 import { useExpenses } from "@/hooks/useExpenses";
 import { TableSkeleton } from "@/components/tracker/TableSkeleton";
-import { Skeleton } from "@/components/ui/skeleton";
 
 const ExpensesPage = () => {
   const { expenses, loading, addExpense, deleteExpense } = useExpenses();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [filterCategory, setFilterCategory] = useState("all");
 
   const [newExpense, setNewExpense] = useState({
     title: "",
@@ -60,12 +58,10 @@ const ExpensesPage = () => {
 
   const filteredExpenses = useMemo(() => {
     return expenses.filter(e => {
-      const matchesSearch = e.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                           (e.notes && e.notes.toLowerCase().includes(searchQuery.toLowerCase()));
-      const matchesCategory = filterCategory === "all" || e.category === filterCategory;
-      return matchesSearch && matchesCategory;
+      const q = searchQuery.toLowerCase();
+      return e.title.toLowerCase().includes(q) || (e.notes && e.notes.toLowerCase().includes(q));
     });
-  }, [expenses, searchQuery, filterCategory]);
+  }, [expenses, searchQuery]);
 
   const totalAmount = filteredExpenses.reduce((sum, e) => sum + e.amount, 0);
 
@@ -90,40 +86,25 @@ const ExpensesPage = () => {
         <TableSkeleton />
       ) : (
         <>
-          {/* Summary Stat */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm relative overflow-hidden group">
-              <div className="absolute top-0 left-0 w-1 h-full bg-orange-500" />
-              <div className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Total Spent</div>
-              <div className="text-3xl font-black text-slate-900">₹{totalAmount.toLocaleString("en-IN")}</div>
-              <p className="text-[10px] text-slate-400 mt-2 font-medium uppercase">{filteredExpenses.length} TRANSACTIONS</p>
-            </div>
+          <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm relative overflow-hidden group">
+            <div className="absolute top-0 left-0 w-1.5 h-full bg-orange-500" />
+            <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Expenditure</div>
+            <div className="text-4xl font-black text-slate-900">₹{totalAmount.toLocaleString("en-IN")}</div>
+            <p className="text-[10px] text-slate-400 mt-2 font-medium uppercase tracking-tight">{filteredExpenses.length} TRANSACTIONS SHOWN</p>
           </div>
 
-          {/* Filters */}
-          <div className="bg-white p-3 rounded-2xl border border-slate-100 shadow-sm flex flex-wrap gap-3 items-center">
-            <div className="relative flex-1 min-w-[200px]">
+          <div className="bg-white p-2 md:p-3 rounded-2xl border border-slate-100 shadow-sm">
+            <div className="relative w-full">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300" />
               <Input 
                 placeholder="Search descriptions..." 
-                className="pl-9 h-11 border-transparent bg-slate-50/50 focus:bg-white focus:ring-0 transition-all rounded-xl"
+                className="pl-9 h-11 md:h-10 border-transparent bg-slate-50/50 focus:bg-white focus:ring-0 transition-all rounded-xl"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
-            <Select value={filterCategory} onValueChange={setFilterCategory}>
-              <SelectTrigger className="w-[180px] h-11 border-transparent bg-slate-50/50 rounded-xl focus:ring-0">
-                <Filter className="w-3.5 h-3.5 mr-2 text-slate-400" />
-                <SelectValue placeholder="Category" />
-              </SelectTrigger>
-              <SelectContent className="rounded-xl border-slate-100 shadow-xl">
-                <SelectItem value="all">All Categories</SelectItem>
-                {EXPENSE_CATEGORIES.map(c => (
-                  <SelectItem key={c} value={c}>{c}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
           </div>
+
 
           {/* Table */}
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
@@ -145,7 +126,7 @@ const ExpensesPage = () => {
                         <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-3">
                           <ReceiptText className="w-6 h-6 text-slate-300" />
                         </div>
-                        <p className="text-slate-400 font-medium text-sm">No expenses match your search.</p>
+                        <p className="text-slate-400 font-medium text-sm">{searchQuery ? 'No expenses match your search.' : 'No expenses recorded yet.'}</p>
                       </td>
                     </tr>
                   ) : (

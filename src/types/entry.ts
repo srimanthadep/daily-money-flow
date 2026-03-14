@@ -9,6 +9,8 @@ export interface LedgerEntry {
   updatedAt: string;
   paidOn?: string;
   user_id?: string; // For Supabase
+  isRecurring?: boolean;
+  recurringFrequency?: "Daily" | "Weekly" | "Monthly";
 }
 
 export interface Expense {

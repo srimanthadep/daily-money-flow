@@ -8,7 +8,12 @@ import { toast } from "sonner";
 import { useUser } from "@clerk/react";
 
 function getToday(): string {
-  return format(new Date(), "yyyy-MM-dd");
+  const now = new Date();
+  // If current time is before 3 AM, we are still conceptually in the previous day
+  if (now.getHours() < 3) {
+    return format(subDays(now, 1), "yyyy-MM-dd");
+  }
+  return format(now, "yyyy-MM-dd");
 }
 
 function checkIsDateLocked(date: string): boolean {
@@ -33,7 +38,6 @@ export function useEntries() {
   const [trash, setTrash] = useState<LedgerEntry[]>([]);
   const [viewDate, setViewDate] = useState(todayDate);
   const [searchQuery, setSearchQuery] = useState("");
-  const [filterStatus, setFilterStatus] = useState<string>("all");
   const [snapDates, setSnapDates] = useState<string[]>([]);
   const [undoStack, setUndoStack] = useState<LedgerEntry[][]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -153,10 +157,11 @@ export function useEntries() {
           const isPrevLocked = checkIsDateLocked(prevDateStr);
 
           // 2. If the previous day is NOT locked, this is a future or currently active date.
-          // Do NOT carry over yet to prevent pollution.
           if (!isPrevLocked) return [];
 
-          // 3. Previous day IS locked. Find the most recent strictly LOCKED date before with data.
+          // 3. Find historical data to carry over
+          let sourceData: LedgerEntry[] = [];
+          
           const { data: latestBefore } = await supabase
             .from("daily_snapshots")
             .select("date, data")
@@ -166,29 +171,36 @@ export function useEntries() {
           
           if (latestBefore && latestBefore.length > 0) {
             const lockedSnap = latestBefore.find(s => checkIsDateLocked(s.date));
-            if (lockedSnap && lockedSnap.data && (lockedSnap.data as LedgerEntry[]).length > 0) {
-              return lockedSnap.data as LedgerEntry[];
+            if (lockedSnap && lockedSnap.data) {
+              sourceData = lockedSnap.data as LedgerEntry[];
             }
           }
-        }
 
-        const local = readLocalSnap(date);
-        if (local && local.length > 0) return local;
+          if (sourceData.length === 0) {
+            const localDates = getLocalSnapDates().filter(d => d < date).sort().reverse();
+            for (const ld of localDates) {
+              if (checkIsDateLocked(ld)) {
+                const prevData = readLocalSnap(ld);
+                if (prevData && prevData.length > 0) {
+                  sourceData = prevData;
+                  break;
+                }
+              }
+            }
+          }
 
-        // Local fallback logic
-        const dateObj = new Date(date + "T00:00:00");
-        const prevDateStr = format(subDays(dateObj, 1), "yyyy-MM-dd");
-        if (!checkIsDateLocked(prevDateStr)) return [];
-
-        const localDates = getLocalSnapDates().filter(d => d < date).sort().reverse();
-        for (const ld of localDates) {
-          if (checkIsDateLocked(ld)) {
-            const prevData = readLocalSnap(ld);
-            if (prevData && prevData.length > 0) return prevData;
+          // Process recurring entries: Reset status to Pending if it's a new day
+          if (sourceData.length > 0) {
+            return sourceData.map(e => {
+              if (e.isRecurring) {
+                return { ...e, status: "Pending" as const, paidOn: undefined };
+              }
+              return e;
+            });
           }
         }
-
-        // Only use SEED_DATA if it's the current "today", we have no history, AND we are in local mode
+        
+        // Final Fallback
         if (date === todayDate && getLocalSnapDates().length === 0 && userId === 'local') {
           return SEED_DATA;
         }
@@ -197,8 +209,6 @@ export function useEntries() {
       };
 
       const result = await loadFromStorage(viewDate);
-      // Ensure we don't save seed data back immediately for future dates 
-      // unless the user actually interacts with it, but for now we set it.
       setEntries(result);
       
       // Load snap dates once
@@ -298,11 +308,8 @@ export function useEntries() {
   }, [entries]);
 
   // ── Filtered & sorted ─────────────────────────────────────────────────
-  const filteredEntries = useMemo(() => {
+  const sortedEntries = useMemo(() => {
     let list = [...entries].sort((a, b) => (a.order || 0) - (b.order || 0));
-    if (filterStatus && filterStatus !== "all") {
-      list = list.filter((e) => e.status === filterStatus);
-    }
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
       list = list.filter(
@@ -312,47 +319,114 @@ export function useEntries() {
       );
     }
     return list;
-  }, [entries, filterStatus, searchQuery]);
+  }, [entries, searchQuery]);
 
   // ── CRUD ───────────────────────────────────────────────────────────────
-  const addEntry = useCallback((data: { name: string; amount: number; notes: string }) => {
-    pushUndo();
+  const addEntry = useCallback(async (data: { 
+    name: string; 
+    amount: number; 
+    notes: string;
+    isRecurring?: boolean;
+    recurringFrequency?: "Daily" | "Weekly" | "Monthly";
+  }) => {
+    const tempId = crypto.randomUUID();
     const now = new Date().toISOString();
     const maxOrder = entries.reduce((m, e) => Math.max(m, e.order || 0), 0);
-    setEntries((prev) => [
-      ...prev,
-      {
-        id: crypto.randomUUID(),
-        name: data.name,
-        amount: data.amount,
-        notes: data.notes,
-        status: "Pending",
-        order: maxOrder + 1,
-        createdAt: now,
-        updatedAt: now,
-      },
-    ]);
-    toast.success("Added " + data.name);
-  }, [entries, pushUndo]);
+    
+    const newEntry: LedgerEntry = {
+      id: tempId,
+      ...data,
+      status: "Pending",
+      order: maxOrder + 1,
+      createdAt: now,
+      updatedAt: now,
+    };
 
-  const updateEntry = useCallback((id: string, updates: Partial<LedgerEntry>) => {
-    pushUndo();
-    setEntries((prev) =>
-      prev.map((e) =>
-        e.id === id ? { ...e, ...updates, updatedAt: new Date().toISOString() } : e
-      )
+    const previousEntries = [...entries];
+    setEntries((prev) => [...prev, newEntry]);
+    
+    try {
+      if (isConfigured && user) {
+        const { data: savedData, error } = await supabase
+          .from("daily_snapshots")
+          .select("data")
+          .eq("date", viewDate)
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        const currentData = savedData?.data ? (savedData.data as LedgerEntry[]) : previousEntries;
+        const updatedData = [...currentData, newEntry];
+
+        const { error: saveError } = await supabase
+          .from("daily_snapshots")
+          .upsert({ 
+            date: viewDate, 
+            data: updatedData, 
+            user_id: user.id 
+          }, { onConflict: 'date,user_id' });
+
+        if (saveError) throw saveError;
+      }
+      toast.success("Added " + data.name);
+    } catch (err) {
+      console.error("Add error:", err);
+      setEntries(previousEntries);
+      toast.error("Failed to sync new entry");
+    }
+  }, [entries, isConfigured, user, viewDate]);
+
+  const updateEntry = useCallback(async (id: string, updates: Partial<LedgerEntry>) => {
+    const previousEntries = [...entries];
+    const updatedEntries = entries.map((e) =>
+      e.id === id ? { ...e, ...updates, updatedAt: new Date().toISOString() } : e
     );
-  }, [pushUndo]);
+    setEntries(updatedEntries);
 
-  const deleteEntry = useCallback((id: string) => {
-    pushUndo();
-    setEntries((prev) => {
-      const entry = prev.find((e) => e.id === id);
-      if (entry) setTrash((t) => [...t, entry]);
-      return prev.filter((e) => e.id !== id);
-    });
-    toast.error("Entry moved to trash");
-  }, [pushUndo]);
+    try {
+      if (isConfigured && user) {
+        const { error } = await supabase
+          .from("daily_snapshots")
+          .upsert({ 
+            date: viewDate, 
+            data: updatedEntries, 
+            user_id: user.id 
+          }, { onConflict: 'date,user_id' });
+        if (error) throw error;
+      }
+    } catch (err) {
+      console.error("Update error:", err);
+      setEntries(previousEntries);
+      toast.error("Update failed to sync");
+    }
+  }, [entries, isConfigured, user, viewDate]);
+
+  const deleteEntry = useCallback(async (id: string) => {
+    const previousEntries = [...entries];
+    const itemToDelete = entries.find(e => e.id === id);
+    const updatedEntries = entries.filter((e) => e.id !== id);
+    
+    setEntries(updatedEntries);
+    if (itemToDelete) setTrash((t) => [...t, itemToDelete]);
+
+    try {
+      if (isConfigured && user) {
+        const { error } = await supabase
+          .from("daily_snapshots")
+          .upsert({ 
+            date: viewDate, 
+            data: updatedEntries, 
+            user_id: user.id 
+          }, { onConflict: 'date,user_id' });
+        if (error) throw error;
+      }
+      toast.error("Entry moved to trash");
+    } catch (err) {
+      console.error("Delete error:", err);
+      setEntries(previousEntries);
+      if (itemToDelete) setTrash((t) => t.filter(x => x.id !== id));
+      toast.error("Delete failed to sync");
+    }
+  }, [entries, isConfigured, user, viewDate]);
 
   const markPaid = useCallback((id: string) => {
     pushUndo();
@@ -368,8 +442,13 @@ export function useEntries() {
           : e
       )
     );
+    // Optimistic Save
+    const updated = entries.map(e => 
+      e.id === id ? { ...e, status: "Paid" as const, paidOn: viewDate } : e
+    );
+    saveToCloud(viewDate, updated);
     toast.success("Marked as Paid");
-  }, [pushUndo, viewDate]);
+  }, [entries, pushUndo, viewDate]);
 
   const markPending = useCallback((id: string) => {
     pushUndo();
@@ -441,8 +520,7 @@ export function useEntries() {
   }, [entries]);
 
   return {
-    entries: entries,
-    filteredEntries,
+    entries: sortedEntries,
     trash,
     viewDate,
     setViewDate,
@@ -455,8 +533,6 @@ export function useEntries() {
     snapDates,
     searchQuery,
     setSearchQuery,
-    filterStatus,
-    setFilterStatus,
     addEntry,
     updateEntry,
     deleteEntry,

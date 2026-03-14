@@ -16,7 +16,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, Trash2, CheckCircle2, RotateCcw } from "lucide-react";
+import { GripVertical, Trash2, CheckCircle2, RotateCcw, Repeat } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 // ── helpers ────────────────────────────────────────────────────────────
@@ -156,12 +156,19 @@ function MobileEntryCard({
         )}
         
         <div className="flex-1 min-w-0">
-          <EditableCell
-            value={entry.name}
-            disabled={readOnly}
-            onSave={(v) => onUpdate(entry.id, { name: v })}
-            className="font-black text-slate-900 text-base block mb-0.5"
-          />
+            <div className="flex items-center gap-1.5 mb-0.5">
+              <EditableCell
+                value={entry.name}
+                disabled={readOnly}
+                onSave={(v) => onUpdate(entry.id, { name: v })}
+                className="font-black text-slate-900 text-base"
+              />
+              {entry.isRecurring && (
+                <span title={`Recurring: ${entry.recurringFrequency}`}>
+                  <Repeat className="w-3 h-3 text-indigo-500" />
+                </span>
+              )}
+            </div>
           <div className="flex items-center gap-2">
             <span className={`text-[9px] px-2 py-0.5 rounded-full font-bold uppercase tracking-widest ${
               isPaid ? "bg-emerald-100 text-emerald-700" : "bg-orange-100 text-orange-700"
@@ -284,12 +291,19 @@ function SortableRow({
 
       {/* Name */}
       <td className="px-4 py-4 min-w-[140px]">
-        <EditableCell
-          value={entry.name}
-          disabled={readOnly}
-          onSave={(v) => onUpdate(entry.id, { name: v })}
-          className="font-bold text-[14px] text-slate-800"
-        />
+        <div className="flex items-center gap-2">
+          <EditableCell
+            value={entry.name}
+            disabled={readOnly}
+            onSave={(v) => onUpdate(entry.id, { name: v })}
+            className="font-bold text-[14px] text-slate-800"
+          />
+          {entry.isRecurring && (
+            <span title={`Recurring: ${entry.recurringFrequency}`}>
+              <Repeat className="w-3 h-3 text-indigo-500" />
+            </span>
+          )}
+        </div>
       </td>
 
       {/* Amount */}

@@ -21,12 +21,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useEntries } from "@/hooks/useEntries";
 import { useExpenses } from "@/hooks/useExpenses";
 import { exportToCSV, exportToExcel } from "@/lib/export";
+import GradientText from "@/components/ui/GradientText";
 
 const Index = () => {
   const { user } = useUser();
   const {
     entries,
-    filteredEntries,
     trash,
     viewDate,
     setViewDate,
@@ -38,8 +38,6 @@ const Index = () => {
     snapDates,
     searchQuery,
     setSearchQuery,
-    filterStatus,
-    setFilterStatus,
     addEntry,
     updateEntry,
     deleteEntry,
@@ -94,8 +92,8 @@ const Index = () => {
 
   const clearFilters = useCallback(() => {
     setSearchQuery("");
-    setFilterStatus("all");
-  }, [setSearchQuery, setFilterStatus]);
+  }, [setSearchQuery]);
+
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -152,8 +150,17 @@ const Index = () => {
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div className="space-y-1">
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-xl md:text-3xl font-black tracking-tight text-slate-900 leading-tight">
-                Welcome, {user?.firstName || user?.username || "Guest"}!
+              <h1 className="text-xl md:text-3xl font-black tracking-tight text-slate-900 leading-tight flex items-center gap-2">
+                Welcome,{" "}
+                <GradientText
+                  colors={["#5227FF", "#FF9FFC", "#B19EEF"]}
+                  animationSpeed={4}
+                  showBorder={false}
+                  className="inline-block"
+                >
+                  {user?.firstName || user?.username || "Guest"}
+                </GradientText>
+                !
               </h1>
               {isLocked ? (
                 <button 
@@ -241,16 +248,12 @@ const Index = () => {
           expensesTotal={expensesTotal}
         />
 
-        {/* Search + Filter */}
         <SearchFilter
           searchQuery={searchQuery}
           onSearchChange={setSearchQuery}
-          filterStatus={filterStatus}
-          onStatusChange={setFilterStatus}
           onClear={clearFilters}
-          entryCount={totalCount}
-          filteredCount={filteredEntries.length}
         />
+
 
         {/* Date nav + Add button */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-6 sm:gap-3">
@@ -277,7 +280,7 @@ const Index = () => {
 
         {/* Table */}
         <EntryTable
-          entries={filteredEntries}
+          entries={entries}
           readOnly={isLocked}
           onUpdate={updateEntry}
           onDelete={deleteEntry}

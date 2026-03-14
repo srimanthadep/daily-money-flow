@@ -10,11 +10,20 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Repeat } from "lucide-react";
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSave: (data: { name: string; amount: number; notes: string }) => void;
+  onSave: (data: { name: string; amount: number; notes: string; isRecurring?: boolean; recurringFrequency?: "Daily" | "Weekly" | "Monthly" }) => void;
   suggestions?: string[];
 }
 
@@ -27,12 +36,16 @@ export function EntryDialog({
   const [name, setName] = useState("");
   const [amount, setAmount] = useState("");
   const [notes, setNotes] = useState("");
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [frequency, setFrequency] = useState<"Daily" | "Weekly" | "Monthly">("Daily");
 
   useEffect(() => {
     if (open) {
       setName("");
       setAmount("");
       setNotes("");
+      setIsRecurring(false);
+      setFrequency("Daily");
     }
   }, [open]);
 
@@ -42,6 +55,8 @@ export function EntryDialog({
       name: name.trim(),
       amount: parseFloat(amount) || 0,
       notes: notes.trim(),
+      isRecurring,
+      recurringFrequency: isRecurring ? frequency : undefined,
     });
     onOpenChange(false);
   };
@@ -108,6 +123,37 @@ export function EntryDialog({
               className="mt-1 resize-none"
               rows={2}
             />
+          </div>
+
+          <div className="pt-2 border-t border-slate-50 mt-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 bg-indigo-50 rounded-lg text-indigo-600">
+                  <Repeat className="w-3.5 h-3.5" />
+                </div>
+                <div className="space-y-0.5">
+                  <Label className="text-xs font-bold text-slate-700">Recurring Entry</Label>
+                  <p className="text-[10px] text-slate-400">Resets to pending every day</p>
+                </div>
+              </div>
+              <Switch checked={isRecurring} onCheckedChange={setIsRecurring} />
+            </div>
+
+            {isRecurring && (
+              <div className="mt-3 flex items-center gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Every</Label>
+                <Select value={frequency} onValueChange={(v: any) => setFrequency(v)}>
+                  <SelectTrigger className="h-8 text-xs font-bold rounded-lg border-slate-100 bg-slate-50/50">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl border-slate-50">
+                    <SelectItem value="Daily">Daily</SelectItem>
+                    <SelectItem value="Weekly">Weekly</SelectItem>
+                    <SelectItem value="Monthly">Monthly</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
         </div>
 
