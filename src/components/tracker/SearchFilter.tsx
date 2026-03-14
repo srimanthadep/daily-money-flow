@@ -31,44 +31,47 @@ export function SearchFilter({
   const hasFilters = searchQuery || filterStatus !== "all";
 
   return (
-    <div className="glass rounded-xl p-3 animate-fade-in">
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="relative flex-1 min-w-[180px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+    <div className="bg-white border border-slate-100 rounded-2xl p-2 md:p-3 shadow-sm animate-fade-in">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 md:gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <Input
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
             placeholder="Search by name or notes..."
-            className="pl-9 text-sm h-9"
+            className="pl-9 text-sm h-10 md:h-9 bg-slate-50/50 border-slate-100 focus:bg-white transition-all rounded-xl"
           />
         </div>
 
-        <Select value={filterStatus} onValueChange={onStatusChange}>
-          <SelectTrigger className="w-[140px] h-9">
-            <Filter className="w-3.5 h-3.5 mr-1.5 text-muted-foreground" />
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All</SelectItem>
-            <SelectItem value="Pending">⏳ Pending</SelectItem>
-            <SelectItem value="Paid">✅ Paid</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex items-center gap-2">
+          <Select value={filterStatus} onValueChange={onStatusChange}>
+            <SelectTrigger className="flex-1 sm:w-[140px] h-10 md:h-9 bg-slate-50/50 border-slate-100 rounded-xl">
+              <Filter className="w-3.5 h-3.5 mr-1.5 text-slate-400" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="rounded-xl">
+              <SelectItem value="all">All</SelectItem>
+              <SelectItem value="Pending">⏳ Pending</SelectItem>
+              <SelectItem value="Paid">✅ Paid</SelectItem>
+            </SelectContent>
+          </Select>
 
-        {hasFilters && (
-          <>
-            <span className="text-xs text-muted-foreground">
-              {filteredCount} of {entryCount}
-            </span>
+          {hasFilters && (
             <Button
               variant="ghost"
               size="sm"
               onClick={onClear}
-              className="text-xs text-muted-foreground h-8"
+              className="text-xs text-rose-500 hover:text-rose-600 hover:bg-rose-50 h-10 md:h-9 px-3 rounded-xl"
             >
-              <X className="w-3 h-3 mr-1" /> Clear
+              <X className="w-3.5 h-3.5 mr-1" /> Clear
             </Button>
-          </>
+          )}
+        </div>
+
+        {hasFilters && (
+          <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest text-center sm:text-left">
+            {filteredCount} results
+          </span>
         )}
       </div>
     </div>

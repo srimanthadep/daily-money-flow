@@ -30,8 +30,8 @@ export function MainLayout({ children }: Props) {
       
       {/* Top Navigation - Only visible when signed in */}
       <Show when="signed-in">
-        <header className="sticky top-0 z-50 bg-white border-b border-slate-100 px-6 h-20 flex items-center shadow-sm backdrop-blur-md bg-white/90">
-          <div className="container max-w-5xl mx-auto flex items-center gap-2">
+        <header className="sticky top-0 z-50 bg-white border-b border-slate-100 px-4 md:px-6 h-16 md:h-20 flex items-center shadow-sm backdrop-blur-md bg-white/90">
+          <div className="container max-w-5xl mx-auto flex items-center justify-between md:justify-start gap-1 md:gap-2">
             {navItems.map((item) => {
               const isActive = location.pathname === item.path;
               const Icon = item.icon;
@@ -39,21 +39,21 @@ export function MainLayout({ children }: Props) {
                 <Link
                   key={item.path}
                   to={item.path}
-                  className={`flex items-center gap-2.5 px-5 py-2.5 rounded-2xl text-[15px] font-semibold transition-all duration-200 ${
+                  className={`flex flex-col md:flex-row items-center justify-center gap-1 md:gap-2.5 px-2 md:px-5 py-1.5 md:py-2.5 rounded-xl md:rounded-2xl text-[10px] md:text-[15px] font-semibold transition-all duration-200 ${
                     isActive 
-                      ? "bg-[#4338CA] text-white shadow-lg shadow-indigo-100" 
+                      ? "bg-indigo-600 text-white shadow-lg shadow-indigo-100" 
                       : "text-slate-400 hover:text-slate-600 hover:bg-slate-50"
                   }`}
                 >
-                  <Icon className={`w-[18px] h-[18px] ${isActive ? "text-white" : "text-slate-400"}`} />
-                  {item.name}
+                  <Icon className={`w-[16px] h-[16px] md:w-[18px] md:h-[18px] ${isActive ? "text-white" : "text-slate-400"}`} />
+                  <span className="leading-none">{item.name}</span>
                 </Link>
               );
             })}
             
             {/* Clerk Auth Integration */}
-            <div className="ml-auto flex items-center gap-2">
-              <UserButton />
+            <div className="md:ml-auto flex items-center">
+              <UserButton appearance={{ elements: { userButtonAvatarBox: "w-8 h-8 md:w-9 md:h-9" } }} />
             </div>
           </div>
         </header>

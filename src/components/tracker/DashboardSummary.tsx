@@ -59,25 +59,25 @@ export function DashboardSummary({
   ];
 
   return (
-    <div className="space-y-3">
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 md:gap-4">
         {cards.map((c) => (
           <div
             key={c.label}
-            className="stat-card animate-fade-in group cursor-default"
+            className="bg-white border border-slate-100 p-3 md:p-5 rounded-2xl shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] animate-fade-in group cursor-default hover:shadow-md transition-all duration-300"
           >
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
+            <div className="flex items-center justify-between mb-2 md:mb-3">
+              <span className="text-[9px] md:text-[11px] font-bold text-slate-400 uppercase tracking-widest">
                 {c.label}
               </span>
-              <div className={`${c.bgClass} p-1.5 rounded-lg`}>
-                <c.icon className={`w-4 h-4 ${c.iconClass}`} />
+              <div className={`${c.bgClass} p-1.5 md:p-2 rounded-xl`}>
+                <c.icon className={`w-3.5 h-3.5 md:w-5 md:h-5 ${c.iconClass}`} />
               </div>
             </div>
-            <div className="text-xl font-bold font-mono leading-tight">
+            <div className="text-lg md:text-2xl font-black text-slate-900 tracking-tight leading-none">
               {c.value}
             </div>
-            <div className="text-[11px] text-muted-foreground mt-1.5">
+            <div className="text-[10px] md:text-[12px] text-slate-400 mt-2 font-medium">
               {c.sub}
             </div>
           </div>

@@ -147,13 +147,13 @@ const Index = () => {
   }
 
   return (
-    <div className="bg-slate-50 min-h-screen">
-      <main className="container py-8 space-y-6 max-w-5xl animate-fade-in">
+    <div className="bg-[#F8FAFC] min-h-screen">
+      <main className="container py-4 md:py-8 px-4 md:px-8 space-y-4 md:space-y-6 max-w-5xl animate-fade-in">
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold tracking-tight text-slate-900 leading-tight">
-                Welcome, {user?.firstName || user?.username || "User"}!
+          <div className="space-y-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-xl md:text-3xl font-black tracking-tight text-slate-900 leading-tight">
+                Welcome, {user?.firstName || user?.username || "Guest"}!
               </h1>
               {isLocked ? (
                 <button 
@@ -189,30 +189,30 @@ const Index = () => {
             <p className="text-sm text-slate-500">Here is your money flow overview</p>
           </div>
           
-          <div className="flex items-center gap-2">
+          <div className="flex items-center md:items-end gap-2 shrink-0 overflow-x-auto pb-1 md:pb-0 scrollbar-none">
             {canUndo && !isLocked && (
               <Button
                 variant="outline"
                 size="sm"
                 onClick={undo}
-                className="gap-2 h-9 bg-white text-slate-600 border-slate-200"
+                className="gap-2 h-10 md:h-9 bg-white text-slate-600 border-slate-100 rounded-xl shadow-sm"
                 title="Undo (Ctrl+Z)"
               >
                 <Undo2 className="w-4 h-4" />
-                Undo
+                <span className="hidden md:inline">Undo</span>
               </Button>
             )}
 
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-2 h-9 bg-white text-slate-600 border-slate-200">
+                <Button variant="outline" size="sm" className="gap-2 h-10 md:h-9 bg-white text-slate-600 border-slate-100 rounded-xl shadow-sm">
                   <Download className="w-4 h-4" />
-                  Export
+                  <span className="hidden md:inline">Export</span>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="rounded-xl border-slate-100 shadow-xl">
-                <DropdownMenuItem onClick={() => exportToCSV(entries)}>CSV</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => exportToExcel(entries)}>Excel</DropdownMenuItem>
+              <DropdownMenuContent className="rounded-2xl border-slate-100 shadow-2xl p-1">
+                <DropdownMenuItem className="rounded-xl font-bold text-xs" onClick={() => exportToCSV(entries)}>CSV REPORT</DropdownMenuItem>
+                <DropdownMenuItem className="rounded-xl font-bold text-xs" onClick={() => exportToExcel(entries)}>EXCEL SHEET</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
 
@@ -221,10 +221,10 @@ const Index = () => {
                 variant="outline"
                 size="sm"
                 onClick={() => setTrashOpen(true)}
-                className="gap-2 h-9 bg-white text-slate-600 border-slate-200"
+                className="gap-2 h-10 md:h-9 bg-white text-slate-600 border-slate-100 rounded-xl shadow-sm"
               >
                 <Trash2 className="w-4 h-4" />
-                {trash.length > 0 && <span className="bg-red-500 text-white px-1.5 py-0.5 rounded text-[10px] font-bold">{trash.length}</span>}
+                {trash.length > 0 && <span className="bg-rose-500 text-white px-1.5 py-0.5 rounded-lg text-[10px] font-black">{trash.length}</span>}
               </Button>
             )}
           </div>
@@ -253,7 +253,7 @@ const Index = () => {
         />
 
         {/* Date nav + Add button */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-6 sm:gap-3">
           <DateNavigator
             viewDate={viewDate}
             onDateChange={setViewDate}
@@ -264,11 +264,11 @@ const Index = () => {
           {!isLocked && (
             <Button
               onClick={() => setAddDialogOpen(true)}
-              className="gap-2 h-9"
+              className="h-14 sm:h-10 rounded-[1.25rem] bg-indigo-600 hover:bg-indigo-700 shadow-xl shadow-indigo-100 font-black text-sm tracking-tight gap-2"
             >
-              <Plus className="w-4 h-4" />
-              Add Person
-              <kbd className="hidden sm:inline text-[10px] bg-primary-foreground/20 px-1.5 py-0.5 rounded ml-1">
+              <Plus className="w-5 h-5" />
+              ADD NEW PERSON
+              <kbd className="hidden sm:inline text-[10px] bg-white/20 px-1.5 py-0.5 rounded-lg ml-1">
                 N
               </kbd>
             </Button>
