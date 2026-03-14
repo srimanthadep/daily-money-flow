@@ -1,6 +1,7 @@
 import { createRoot } from "react-dom/client";
 // @ts-ignore - Vite PWA virtual module
 import { registerSW } from 'virtual:pwa-register';
+import { ClerkProvider } from "@clerk/react";
 import App from "./App.tsx";
 import "./index.css";
 
@@ -16,4 +17,8 @@ const updateSW = registerSW({
   },
 });
 
-createRoot(document.getElementById("root")!).render(<App />);
+createRoot(document.getElementById("root")!).render(
+  <ClerkProvider afterSignOutUrl="/">
+    <App />
+  </ClerkProvider>
+);

@@ -5,10 +5,7 @@ import { SEED_DATA } from "@/lib/seedData";
 import { arrayMove } from "@dnd-kit/sortable";
 import { supabase, isConfigured } from "@/lib/supabase";
 import { toast } from "sonner";
-
-const SNAP = "snap:";
-const LATEST = "snap:latest";
-const TRASH_KEY = "ledger-trash";
+import { useUser } from "@clerk/react";
 
 function getToday(): string {
   return format(new Date(), "yyyy-MM-dd");
@@ -25,6 +22,12 @@ function checkIsDateLocked(date: string): boolean {
 }
 
 export function useEntries() {
+  const { user } = useUser();
+  const userId = user?.id || 'local';
+  const SNAP = `snap:${userId}:`;
+  const LATEST = `latest:${userId}`;
+  const UNLOCK_KEY = `unlocked:${userId}`;
+
   const todayDate = getToday();
   const [entries, setEntries] = useState<LedgerEntry[]>([]);
   const [trash, setTrash] = useState<LedgerEntry[]>([]);
@@ -36,8 +39,6 @@ export function useEntries() {
   const [isLoading, setIsLoading] = useState(true);
 
   const isToday = viewDate === todayDate;
-
-  const UNLOCK_KEY = "ledger-unlocked-v2";
 
   const [forceUnlocked, setForceUnlocked] = useState<Record<string, number>>(() => {
     const local = localStorage.getItem(UNLOCK_KEY);
@@ -64,14 +65,13 @@ export function useEntries() {
 
     if (isConfigured) {
       if (expiresAt === null) {
-        await supabase.from("unlocked_dates").delete().eq("date", date);
+        await supabase.from("unlocked_dates").delete().eq("date", date).eq("user_id", user.id);
       } else {
-        const { data: user } = await supabase.auth.getUser();
         await supabase.from("unlocked_dates").upsert({
           date,
           expires_at: expiresAt,
-          user_id: user?.user?.id
-        }, { onConflict: 'date' });
+          user_id: user.id
+        }, { onConflict: 'date,user_id' }); // Assuming composite key or ignoring since RLS protects
       }
     }
   };
@@ -124,11 +124,12 @@ export function useEntries() {
       setIsLoading(true);
       
       const loadFromStorage = async (date: string) => {
-        if (isConfigured) {
+        if (isConfigured && user) {
           const { data } = await supabase
             .from("daily_snapshots")
             .select("data")
             .eq("date", date)
+            .eq("user_id", user.id)
             .maybeSingle();
           
           if (data && data.data && (data.data as LedgerEntry[]).length > 0) return data.data as LedgerEntry[];
@@ -147,6 +148,7 @@ export function useEntries() {
             .from("daily_snapshots")
             .select("date, data")
             .lt("date", date)
+            .eq("user_id", user.id)
             .order("date", { ascending: false });
           
           if (latestBefore && latestBefore.length > 0) {
@@ -187,10 +189,11 @@ export function useEntries() {
       setEntries(result);
       
       // Load snap dates once
-      if (snapDates.length === 0 && isConfigured) {
+      if (snapDates.length === 0 && isConfigured && user) {
         const { data: snaps } = await supabase
           .from("daily_snapshots")
           .select("date")
+          .eq("user_id", user.id)
           .order("date", { ascending: false });
         if (snaps) setSnapDates(snaps.map(s => s.date));
 
@@ -198,6 +201,7 @@ export function useEntries() {
         const { data: unlocked } = await supabase
           .from("unlocked_dates")
           .select("*")
+          .eq("user_id", user.id)
           .gt("expires_at", Date.now());
         
         if (unlocked) {
@@ -225,17 +229,16 @@ export function useEntries() {
     localStorage.setItem(SNAP + date, JSON.stringify(data));
     localStorage.setItem(LATEST, date);
 
-    if (!isConfigured) return;
+    if (!isConfigured || !user) return;
 
     try {
-      const { data: user } = await supabase.auth.getUser();
       await supabase
         .from("daily_snapshots")
         .upsert({
           date,
           data,
-          user_id: user?.user?.id,
-        }, { onConflict: 'date' });
+          user_id: user.id,
+        }, { onConflict: 'date,user_id' }); // Assuming composite key
       
       if (!snapDates.includes(date)) {
         setSnapDates(prev => Array.from(new Set([...prev, date])).sort().reverse());

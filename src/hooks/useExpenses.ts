@@ -2,8 +2,12 @@ import { useState, useEffect } from "react";
 import { supabase, isConfigured } from "@/lib/supabase";
 import { Expense } from "@/types/entry";
 import { toast } from "sonner";
+import { useUser } from "@clerk/react";
 
 export function useExpenses() {
+  const { user } = useUser();
+  const userId = user?.id || 'local';
+  const STORAGE_KEY = `expense_data_${userId}`;
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -16,8 +20,8 @@ export function useExpenses() {
     try {
       setLoading(true);
       
-      if (!isConfigured) {
-        const local = localStorage.getItem("expense_data");
+      if (!isConfigured || !user) {
+        const local = localStorage.getItem(STORAGE_KEY);
         if (local) setExpenses(JSON.parse(local));
         setLoading(false);
         return;
@@ -31,10 +35,10 @@ export function useExpenses() {
       if (error) throw error;
       setExpenses(data || []);
       // Backup to local
-      localStorage.setItem("expense_data", JSON.stringify(data || []));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data || []));
     } catch (err: any) {
       console.error("Error fetching expenses:", err.message);
-      const local = localStorage.getItem("expense_data");
+      const local = localStorage.getItem(STORAGE_KEY);
       if (local) setExpenses(JSON.parse(local));
     } finally {
       setLoading(false);
@@ -50,18 +54,17 @@ export function useExpenses() {
     };
 
     try {
-      if (!isConfigured) {
+      if (!isConfigured || !user) {
         const updated = [localExp, ...expenses];
         setExpenses(updated);
-        localStorage.setItem("expense_data", JSON.stringify(updated));
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
         toast.success("Expense saved locally");
         return localExp;
       }
 
-      const { data: user } = await supabase.auth.getUser();
       const newExp = {
         ...expense,
-        user_id: user?.user?.id,
+        user_id: user.id,
       };
 
       const { data, error } = await supabase
@@ -75,13 +78,13 @@ export function useExpenses() {
       setExpenses([saved, ...expenses]);
       toast.success("Expense added and synced");
       
-      localStorage.setItem("expense_data", JSON.stringify([saved, ...expenses]));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify([saved, ...expenses]));
       return saved;
     } catch (err: any) {
       toast.error("Cloud sync failed. Saved locally.");
       const updated = [localExp, ...expenses];
       setExpenses(updated);
-      localStorage.setItem("expense_data", JSON.stringify(updated));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
     }
   };
 
@@ -94,13 +97,13 @@ export function useExpenses() {
 
       const updated = expenses.filter(e => e.id !== id);
       setExpenses(updated);
-      localStorage.setItem("expense_data", JSON.stringify(updated));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
       toast.success("Expense deleted");
     } catch (err: any) {
       toast.error("Cloud delete failed. Deleted locally.");
       const updated = expenses.filter(e => e.id !== id);
       setExpenses(updated);
-      localStorage.setItem("expense_data", JSON.stringify(updated));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
     }
   };
 
