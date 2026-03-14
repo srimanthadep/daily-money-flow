@@ -3,6 +3,7 @@ import { ReceiptText, IndianRupee, CloudOff, Database } from "lucide-react";
 import InstallPromptBanner from "./InstallPromptBanner";
 import { useOfflineSync } from "@/hooks/useOfflineSync";
 import { Show, SignInButton, SignUpButton, UserButton } from "@clerk/react";
+import { useSupabaseSync } from "@/hooks/useSupabaseSync";
 
 interface Props {
   children: React.ReactNode;
@@ -11,6 +12,7 @@ interface Props {
 export function MainLayout({ children }: Props) {
   const location = useLocation();
   const { isOnline } = useOfflineSync();
+  useSupabaseSync(); // Synchronize Clerk Auth with Supabase client
 
   const navItems = [
     { name: "Tracker", path: "/", icon: IndianRupee },
@@ -71,7 +73,7 @@ export function MainLayout({ children }: Props) {
             <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-indigo-50 rounded-full blur-[120px] opacity-60" />
             <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-50 rounded-full blur-[120px] opacity-60" />
             
-            <div className="max-w-sm w-full relative z-10">
+            <div className="max-w-sm w-full relative z-30">
               <div className="bg-white/80 backdrop-blur-xl rounded-[2rem] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.08)] border border-white p-6 md:p-8 text-center space-y-5 animate-in zoom-in fade-in duration-700">
                 {/* Logo Area */}
                 <div className="relative group">
