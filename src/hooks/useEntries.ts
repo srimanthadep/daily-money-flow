@@ -67,11 +67,24 @@ export function useEntries() {
       if (expiresAt === null) {
         await supabase.from("unlocked_dates").delete().eq("date", date).eq("user_id", user.id);
       } else {
-        await supabase.from("unlocked_dates").upsert({
-          date,
-          expires_at: expiresAt,
-          user_id: user.id
-        }, { onConflict: 'date,user_id' }); // Assuming composite key or ignoring since RLS protects
+        const { data: existing } = await supabase
+          .from("unlocked_dates")
+          .select("id")
+          .eq("date", date)
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        if (existing) {
+          await supabase
+            .from("unlocked_dates")
+            .update({ expires_at: expiresAt })
+            .eq("date", date)
+            .eq("user_id", user.id);
+        } else {
+          await supabase
+            .from("unlocked_dates")
+            .insert({ date, expires_at: expiresAt, user_id: user.id });
+        }
       }
     }
   };
@@ -232,14 +245,35 @@ export function useEntries() {
     if (!isConfigured || !user) return;
 
     try {
-      await supabase
+      // Check if a record exists first
+      const { data: existing } = await supabase
         .from("daily_snapshots")
-        .upsert({
-          date,
-          data,
-          user_id: user.id,
-        }, { onConflict: 'date,user_id' }); // Assuming composite key
-      
+        .select("id")
+        .eq("date", date)
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      let error;
+      if (existing) {
+        // Update existing record
+        ({ error } = await supabase
+          .from("daily_snapshots")
+          .update({ data })
+          .eq("date", date)
+          .eq("user_id", user.id));
+      } else {
+        // Insert new record
+        ({ error } = await supabase
+          .from("daily_snapshots")
+          .insert({ date, data, user_id: user.id }));
+      }
+
+      if (error) {
+        console.error("Supabase save error:", error.code, error.message, error.details, error.hint);
+        toast.error(`Save failed: ${error.message}`);
+        return;
+      }
+
       if (!snapDates.includes(date)) {
         setSnapDates(prev => Array.from(new Set([...prev, date])).sort().reverse());
       }
