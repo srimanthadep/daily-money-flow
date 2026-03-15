@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { LedgerEntry } from "@/types/entry";
 import {
   DndContext,
-  closestCenter,
+  closestCorners,
   KeyboardSensor,
   PointerSensor,
   useSensor,
@@ -395,6 +395,15 @@ export function EntryTable({
   onMarkPending,
   onReorder,
 }: Props) {
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 640);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
@@ -427,121 +436,123 @@ export function EntryTable({
     <div className="animate-fade-in relative">
       <DndContext
         sensors={sensors}
-        collisionDetection={closestCenter}
+        collisionDetection={closestCorners}
         onDragEnd={handleDragEnd}
       >
-        {/* Desktop Table */}
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden hidden sm:block">
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse">
-              <thead>
-                <tr className="border-b border-slate-50 bg-slate-50/30">
-                  <th className="px-2 py-4 w-10" />
-                  <th className="px-2 py-4 text-xs font-semibold text-slate-400 uppercase tracking-widest w-10 text-center">
-                    #
-                  </th>
-                  <th className="px-4 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-widest text-left">
-                    Name
-                  </th>
-                  <th className="px-4 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-widest text-center">
-                    Amount
-                  </th>
-                  <th className="px-4 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-widest text-left hidden md:table-cell">
-                    Notes
-                  </th>
-                  <th className="px-4 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-widest text-center hidden sm:table-cell w-[110px]">
-                    Status
-                  </th>
-                  {!readOnly && (
-                    <th className="px-3 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-widest text-right w-[100px]">
-                      Actions
+        {isMobile ? (
+          /* Mobile View */
+          <div className="space-y-3">
+            <SortableContext
+              items={entries.map((e) => e.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              {entries.map((entry) => (
+                <MobileEntryCard
+                  key={entry.id}
+                  entry={entry}
+                  readOnly={!!readOnly}
+                  onUpdate={onUpdate}
+                  onDelete={onDelete}
+                  onMarkPaid={onMarkPaid}
+                  onMarkPending={onMarkPending}
+                />
+              ))}
+            </SortableContext>
+
+            {/* Mobile Footer (Totals) */}
+            <div className="p-5 bg-white rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between">
+              <div className="space-y-0.5">
+                <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total Members</span>
+                <span className="block font-black text-slate-900 text-lg">{entries.length}</span>
+              </div>
+              <div className="text-right space-y-0.5">
+                <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total Amount</span>
+                <span className="block font-black text-indigo-600 text-xl leading-none">{fmt(total)}</span>
+                {pendingTotal !== total && (
+                  <span className="block text-[10px] font-bold text-orange-600 uppercase tracking-tight mt-1">
+                    ({fmt(pendingTotal)} pending)
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        ) : (
+          /* Desktop Table */
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-50 bg-slate-50/30">
+                    <th className="px-2 py-4 w-10" />
+                    <th className="px-2 py-4 text-xs font-semibold text-slate-400 uppercase tracking-widest w-10 text-center">
+                      #
                     </th>
-                  )}
-                </tr>
-              </thead>
-
-              <SortableContext
-                items={entries.map((e) => e.id)}
-                strategy={verticalListSortingStrategy}
-              >
-                <tbody>
-                  {entries.map((entry, idx) => (
-                    <SortableRow
-                      key={entry.id}
-                      entry={entry}
-                      index={idx}
-                      readOnly={!!readOnly}
-                      onUpdate={onUpdate}
-                      onDelete={onDelete}
-                      onMarkPaid={onMarkPaid}
-                      onMarkPending={onMarkPending}
-                    />
-                  ))}
-                </tbody>
-              </SortableContext>
-
-              <tfoot>
-                <tr className="bg-slate-50/20 border-t border-slate-100">
-                  <td />
-                  <td className="px-2 py-5" />
-                  <td className="px-4 py-5">
-                    <span className="font-bold text-sm text-slate-500">{entries.length} people</span>
-                  </td>
-                  <td className="px-4 py-5 text-center">
-                    <div className="font-bold text-slate-800 text-base">
-                      {fmt(total)}
-                    </div>
-                    {pendingTotal !== total && (
-                      <div className="text-[10px] text-orange-600 font-bold uppercase tracking-tight">
-                        {fmt(pendingTotal)} pending
-                      </div>
+                    <th className="px-4 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-widest text-left">
+                      Name
+                    </th>
+                    <th className="px-4 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-widest text-center">
+                      Amount
+                    </th>
+                    <th className="px-4 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-widest text-left hidden md:table-cell">
+                      Notes
+                    </th>
+                    <th className="px-4 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-widest text-center hidden sm:table-cell w-[110px]">
+                      Status
+                    </th>
+                    {!readOnly && (
+                      <th className="px-3 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-widest text-right w-[100px]">
+                        Actions
+                      </th>
                     )}
-                  </td>
-                  <td className="hidden md:table-cell" />
-                  <td className="hidden sm:table-cell" />
-                  {!readOnly && <td />}
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-        </div>
+                  </tr>
+                </thead>
 
-        {/* Mobile View */}
-        <div className="sm:hidden space-y-3">
-          <SortableContext
-            items={entries.map((e) => e.id)}
-            strategy={verticalListSortingStrategy}
-          >
-            {entries.map((entry) => (
-              <MobileEntryCard
-                key={entry.id}
-                entry={entry}
-                readOnly={!!readOnly}
-                onUpdate={onUpdate}
-                onDelete={onDelete}
-                onMarkPaid={onMarkPaid}
-                onMarkPending={onMarkPending}
-              />
-            ))}
-          </SortableContext>
+                <SortableContext
+                  items={entries.map((e) => e.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <tbody>
+                    {entries.map((entry, idx) => (
+                      <SortableRow
+                        key={entry.id}
+                        entry={entry}
+                        index={idx}
+                        readOnly={!!readOnly}
+                        onUpdate={onUpdate}
+                        onDelete={onDelete}
+                        onMarkPaid={onMarkPaid}
+                        onMarkPending={onMarkPending}
+                      />
+                    ))}
+                  </tbody>
+                </SortableContext>
 
-          {/* Mobile Footer (Totals) */}
-          <div className="p-5 bg-white rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between">
-            <div className="space-y-0.5">
-              <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total Members</span>
-              <span className="block font-black text-slate-900 text-lg">{entries.length}</span>
-            </div>
-            <div className="text-right space-y-0.5">
-              <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest">Total Amount</span>
-              <span className="block font-black text-indigo-600 text-xl leading-none">{fmt(total)}</span>
-              {pendingTotal !== total && (
-                <span className="block text-[10px] font-bold text-orange-600 uppercase tracking-tight mt-1">
-                  ({fmt(pendingTotal)} pending)
-                </span>
-              )}
+                <tfoot>
+                  <tr className="bg-slate-50/20 border-t border-slate-100">
+                    <td />
+                    <td className="px-2 py-5" />
+                    <td className="px-4 py-5">
+                      <span className="font-bold text-sm text-slate-500">{entries.length} people</span>
+                    </td>
+                    <td className="px-4 py-5 text-center">
+                      <div className="font-bold text-slate-800 text-base">
+                        {fmt(total)}
+                      </div>
+                      {pendingTotal !== total && (
+                        <div className="text-[10px] text-orange-600 font-bold uppercase tracking-tight">
+                          {fmt(pendingTotal)} pending
+                        </div>
+                      )}
+                    </td>
+                    <td className="hidden md:table-cell" />
+                    <td className="hidden sm:table-cell" />
+                    {!readOnly && <td />}
+                  </tr>
+                </tfoot>
+              </table>
             </div>
           </div>
-        </div>
+        )}
       </DndContext>
     </div>
   );

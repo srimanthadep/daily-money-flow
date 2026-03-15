@@ -483,15 +483,18 @@ export function useEntries() {
 
   const reorder = useCallback((activeId: string, overId: string) => {
     pushUndo();
-    setEntries((prev) => {
-      const sorted = [...prev].sort((a, b) => (a.order || 0) - (b.order || 0));
-      const oldIdx = sorted.findIndex((e) => e.id === activeId);
-      const newIdx = sorted.findIndex((e) => e.id === overId);
-      if (oldIdx === -1 || newIdx === -1) return prev;
-      const moved = arrayMove(sorted, oldIdx, newIdx);
-      return moved.map((e, i) => ({ ...e, order: i + 1 }));
-    });
-  }, [pushUndo]);
+    const sorted = [...entries].sort((a, b) => (a.order || 0) - (b.order || 0));
+    const oldIdx = sorted.findIndex((e) => e.id === activeId);
+    const newIdx = sorted.findIndex((e) => e.id === overId);
+    
+    if (oldIdx === -1 || newIdx === -1) return;
+    
+    const moved = arrayMove(sorted, oldIdx, newIdx);
+    const updated = moved.map((e, i) => ({ ...e, order: i + 1 }));
+    
+    setEntries(updated);
+    saveToCloud(viewDate, updated);
+  }, [entries, pushUndo, viewDate]);
 
   const undo = useCallback(() => {
     setUndoStack((stack) => {
