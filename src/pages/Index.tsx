@@ -23,6 +23,8 @@ import { useExpenses } from "@/hooks/useExpenses";
 import { exportToCSV, exportToExcel } from "@/lib/export";
 import GradientText from "@/components/ui/GradientText";
 
+import { useGoogleSync } from "@/hooks/useGoogleSync";
+
 const Index = () => {
   const { user } = useUser();
   const {
@@ -58,6 +60,7 @@ const Index = () => {
     isLoading,
   } = useEntries();
 
+  const { syncToSheets, isSyncing } = useGoogleSync();
   const { expenses, loading: expensesLoading } = useExpenses();
   const expensesTotal = useMemo(() => expenses.reduce((s, e) => s + e.amount, 0), [expenses]);
 
@@ -220,6 +223,13 @@ const Index = () => {
               <DropdownMenuContent className="rounded-2xl border-slate-100 shadow-2xl p-1">
                 <DropdownMenuItem className="rounded-xl font-bold text-xs" onClick={() => exportToCSV(entries)}>CSV REPORT</DropdownMenuItem>
                 <DropdownMenuItem className="rounded-xl font-bold text-xs" onClick={() => exportToExcel(entries)}>EXCEL SHEET</DropdownMenuItem>
+                <DropdownMenuItem 
+                  className="rounded-xl font-bold text-xs text-indigo-600 focus:text-indigo-700" 
+                  onClick={() => syncToSheets(viewDate)}
+                  disabled={isSyncing}
+                >
+                  {isSyncing ? "SYNCING..." : "PUSH TO GOOGLE SHEETS"}
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
 

@@ -6,6 +6,7 @@ import { arrayMove } from "@dnd-kit/sortable";
 import { supabase, isConfigured } from "@/lib/supabase";
 import { toast } from "sonner";
 import { useUser } from "@clerk/react";
+import { useGoogleSync } from "./useGoogleSync";
 
 function getToday(): string {
   const now = new Date();
@@ -106,17 +107,23 @@ export function useEntries() {
     }
   }, [isConfigured]);
 
+  const { syncToSheets } = useGoogleSync();
+
   const lockDate = useCallback(async (date: string, password?: string) => {
     const adminPassword = import.meta.env.VITE_ADMIN_PASSWORD || "1234";
     if (password === adminPassword) {
       await saveUnlockState(date, null);
       toast.success("Date locked successfully");
+      
+      // Auto-sync to Google Sheets on lock
+      syncToSheets(date);
+      
       return true;
     } else {
       toast.error("Incorrect password");
       return false;
     }
-  }, [isConfigured]);
+  }, [isConfigured, syncToSheets]);
 
   // ── Read / write helpers for Local Fallback ──────────────────────────────
   const readLocalSnap = (date: string): LedgerEntry[] | null => {
