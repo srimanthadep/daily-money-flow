@@ -1,0 +1,228 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 220 20% 97%;
+    --foreground: 220 25% 10%;
+    --card: 0 0% 100%;
+    --card-foreground: 220 25% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 25% 10%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 14% 92%;
+    --secondary-foreground: 220 25% 10%;
+    --muted: 220 14% 95%;
+    --muted-foreground: 220 10% 46%;
+    --accent: 160 84% 39%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 220 13% 89%;
+    --input: 220 13% 89%;
+    --ring: 217 91% 60%;
+    --radius: 0.75rem;
+    --chart-up: 160 84% 39%;
+    --chart-down: 0 72% 51%;
+    --chart-accent: 217 91% 60%;
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+
+    --font-display: 'Inter', system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', monospace;
+  }
+
+  .dark {
+    --background: 222 47% 6%;
+    --foreground: 210 40% 96%;
+    --card: 222 47% 9%;
+    --card-foreground: 210 40% 96%;
+    --popover: 222 47% 9%;
+    --popover-foreground: 210 40% 96%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 222 30% 14%;
+    --secondary-foreground: 210 40% 96%;
+    --muted: 222 30% 14%;
+    --muted-foreground: 215 20% 55%;
+    --accent: 160 84% 39%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 222 30% 18%;
+    --input: 222 30% 18%;
+    --ring: 217 91% 60%;
+    --chart-up: 160 84% 39%;
+    --chart-down: 0 72% 51%;
+    --chart-accent: 217 91% 60%;
+    --sidebar-background: 222 47% 8%;
+    --sidebar-foreground: 210 40% 96%;
+    --sidebar-primary: 217 91% 60%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 222 30% 14%;
+    --sidebar-accent-foreground: 210 40% 96%;
+    --sidebar-border: 222 30% 18%;
+    --sidebar-ring: 217 91% 60%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-family: var(--font-display);
+  }
+
+  /* Hide number input arrows */
+  input::-webkit-outer-spin-button,
+  input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  input[type=number] {
+    -moz-appearance: textfield;
+  }
+}
+
+@layer utilities {
+  .font-mono {
+    font-family: var(--font-mono);
+  }
+  .glass {
+    @apply bg-card/80 backdrop-blur-xl border border-border/50;
+  }
+  .glow-primary {
+    box-shadow: 0 0 20px hsl(var(--primary) / 0.15), 0 0 60px hsl(var(--primary) / 0.05);
+  }
+  .gradient-text {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent;
+  }
+}
+
+@layer components {
+  .stat-card {
+    @apply glass rounded-xl p-5 transition-all duration-300 hover:glow-primary;
+  }
+  .table-cell-edit {
+    @apply bg-transparent border-none outline-none w-full text-foreground font-mono text-sm focus:ring-1 focus:ring-primary/50 rounded px-1;
+  }
+}
+
+/* ── Print Styles ────────────────────────────────────────────────── */
+@media print {
+  @page {
+    margin: 20mm;
+  }
+
+  /* Hide everything by default */
+  header,
+  footer,
+  aside,
+  nav,
+  button,
+  .no-print,
+  [role="dialog"],
+  .lucide,
+  .cl-rootBox,
+  .bg-indigo-600, /* Hide add button if no-print missed it */
+  input {
+    display: none !important;
+  }
+
+  /* Show only the main content */
+  body {
+    background: white !important;
+    color: black !important;
+    font-size: 8pt; /* Reduced font size */
+    line-height: 1.2;
+  }
+
+  .min-h-screen,
+  main,
+  .container,
+  .overflow-hidden,
+  .overflow-x-auto {
+    padding: 0 !important;
+    margin: 0 !important;
+    max-width: 100% !important;
+    min-height: auto !important;
+    background: transparent !important;
+    overflow: visible !important;
+    height: auto !important;
+  }
+
+  /* Reset layout constraints */
+  .animate-fade-in {
+    animation: none !important;
+    opacity: 1 !important;
+  }
+
+  /* Table styles */
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+    margin-bottom: 10px !important;
+    table-layout: auto !important;
+  }
+
+  th, td {
+    border: 1px solid #ddd !important;
+    padding: 2px 4px !important; /* Significantly reduced padding */
+    text-align: left !important;
+    overflow: visible !important;
+    font-size: 8pt !important;
+  }
+
+  th {
+    background-color: #f8f9fa !important;
+    -webkit-print-color-adjust: exact;
+    font-weight: bold !important;
+  }
+
+  /* Ensure totals appear only at the VERY end */
+  .print-only {
+    display: block !important;
+    clear: both !important;
+    page-break-inside: avoid !important;
+  }
+
+  /* Force totals to the last page if too long */
+  .print-only {
+    display: block !important;
+  }
+
+  .print-header {
+    margin-bottom: 10px;
+    border-bottom: 2px solid #333;
+    padding-bottom: 5px;
+  }
+
+  .print-header h1 {
+    font-size: 12pt;
+    font-weight: bold;
+    margin: 0;
+  }
+
+  .print-header p {
+    font-size: 7pt;
+    color: #666;
+    margin: 2px 0 0 0;
+  }
+}
+
+.print-only {
+  display: none;
+}
