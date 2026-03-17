@@ -69,7 +69,11 @@ export function useExpenses() {
     try {
       const { data, error } = await supabase
         .from("expenses")
-        .insert([{ ...expense, user_id: user.id }])
+        .insert([{ 
+          ...expense, 
+          user_id: user.id,
+          username: user.username || user.firstName || user.fullName || 'Guest'
+        }])
         .select();
 
       if (error) throw error;

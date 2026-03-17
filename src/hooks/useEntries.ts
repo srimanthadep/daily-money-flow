@@ -88,7 +88,12 @@ export function useEntries() {
         } else {
           await supabase
             .from("unlocked_dates")
-            .insert({ date, expires_at: expiresAt, user_id: user.id });
+            .insert({ 
+              date, 
+              expires_at: expiresAt, 
+              user_id: user.id,
+              username: user.username || user.firstName || user.fullName || 'Guest'
+            });
         }
       }
     }
@@ -282,7 +287,12 @@ export function useEntries() {
         // Insert new record
         ({ error } = await supabase
           .from("daily_snapshots")
-          .insert({ date, data, user_id: user.id }));
+          .insert({ 
+            date, 
+            data, 
+            user_id: user.id,
+            username: user.username || user.firstName || user.fullName || 'Guest'
+          }));
       }
 
       if (error) {
@@ -369,7 +379,8 @@ export function useEntries() {
           .upsert({ 
             date: viewDate, 
             data: updatedData, 
-            user_id: user.id 
+            user_id: user.id,
+            username: user.username || user.firstName || user.fullName || 'Guest'
           }, { onConflict: 'date,user_id' });
 
         if (saveError) throw saveError;
@@ -396,7 +407,8 @@ export function useEntries() {
           .upsert({ 
             date: viewDate, 
             data: updatedEntries, 
-            user_id: user.id 
+            user_id: user.id,
+            username: user.username || user.firstName || user.fullName || 'Guest'
           }, { onConflict: 'date,user_id' });
         if (error) throw error;
       }
@@ -422,7 +434,8 @@ export function useEntries() {
           .upsert({ 
             date: viewDate, 
             data: updatedEntries, 
-            user_id: user.id 
+            user_id: user.id,
+            username: user.username || user.firstName || user.fullName || 'Guest'
           }, { onConflict: 'date,user_id' });
         if (error) throw error;
       }
