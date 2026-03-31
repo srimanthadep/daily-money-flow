@@ -14,7 +14,8 @@ function LoginLogger() {
 
   useEffect(() => {
     if (isLoaded && user && !loggedRef.current) {
-      logActivity("LOGIN", "User logged in to the dashboard");
+      const fullName = user.fullName || user.username || user.firstName || "User";
+      logActivity("LOGIN", `${fullName} logged in to the dashboard`);
       loggedRef.current = true;
     }
   }, [isLoaded, user, logActivity]);
