@@ -7,6 +7,7 @@ import { supabase, isConfigured } from "@/lib/supabase";
 import { toast } from "sonner";
 import { useUser } from "@clerk/react";
 import { useGoogleSync } from "./useGoogleSync";
+import { useActivityLog } from "./useActivityLog";
 
 function getToday(): string {
   const now = new Date();
@@ -42,6 +43,7 @@ export function useEntries() {
   const [snapDates, setSnapDates] = useState<string[]>([]);
   const [undoStack, setUndoStack] = useState<LedgerEntry[][]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const { logActivity } = useActivityLog();
 
   const isToday = viewDate === todayDate;
 
@@ -386,6 +388,7 @@ export function useEntries() {
         if (saveError) throw saveError;
       }
       toast.success("Added " + data.name);
+      logActivity("ENTRY_ADDED", `Added ${data.name} with amount ₹${data.amount}`);
     } catch (err) {
       console.error("Add error:", err);
       setEntries(previousEntries);
@@ -395,6 +398,7 @@ export function useEntries() {
 
   const updateEntry = useCallback(async (id: string, updates: Partial<LedgerEntry>) => {
     const previousEntries = [...entries];
+    const prevEntry = entries.find(e => e.id === id);
     const updatedEntries = entries.map((e) =>
       e.id === id ? { ...e, ...updates, updatedAt: new Date().toISOString() } : e
     );
@@ -411,6 +415,14 @@ export function useEntries() {
             username: user.username || user.firstName || user.fullName || 'Guest'
           }, { onConflict: 'date,user_id' });
         if (error) throw error;
+      }
+      const updatedEntry = updatedEntries.find(e => e.id === id);
+      if (updatedEntry && prevEntry) {
+         if (updates.amount !== undefined && prevEntry.amount !== updates.amount) {
+           logActivity("ENTRY_UPDATED", `Updated ${updatedEntry.name}'s amount: ₹${prevEntry.amount} → ₹${updates.amount}`);
+         } else {
+           logActivity("ENTRY_UPDATED", `Updated entry: ${updatedEntry.name}`);
+         }
       }
     } catch (err) {
       console.error("Update error:", err);
@@ -440,6 +452,7 @@ export function useEntries() {
         if (error) throw error;
       }
       toast.error("Entry moved to trash");
+      if (itemToDelete) logActivity("ENTRY_TRASHED", `Moved ${itemToDelete.name} to trash`);
     } catch (err) {
       console.error("Delete error:", err);
       setEntries(previousEntries);
@@ -468,7 +481,9 @@ export function useEntries() {
     );
     saveToCloud(viewDate, updated);
     toast.success("Marked as Paid");
-  }, [entries, pushUndo, viewDate]);
+    const item = entries.find(e => e.id === id);
+    if (item) logActivity("MARKED_PAID", `Marked ${item.name} as Paid`);
+  }, [entries, pushUndo, viewDate, logActivity]);
 
   const markPending = useCallback((id: string) => {
     pushUndo();
@@ -484,7 +499,9 @@ export function useEntries() {
           : e
       )
     );
-  }, [pushUndo]);
+    const item = entries.find(e => e.id === id);
+    if (item) logActivity("MARKED_PENDING", `Marked ${item.name} as Pending`);
+  }, [pushUndo, entries, logActivity]);
 
   const restoreEntry = useCallback((id: string) => {
     setTrash((prev) => {
@@ -495,11 +512,15 @@ export function useEntries() {
       return prev.filter((e) => e.id !== id);
     });
     toast.success("Restored entry");
-  }, []);
+    const item = trash.find((e) => e.id === id);
+    if (item) logActivity("ENTRY_RESTORED", `Restored ${item.name} from trash`);
+  }, [trash, logActivity]);
 
   const permanentDelete = useCallback((id: string) => {
+    const item = trash.find((e) => e.id === id);
     setTrash((prev) => prev.filter((e) => e.id !== id));
-  }, []);
+    if (item) logActivity("ENTRY_DELETED", `Permanently deleted ${item.name}`);
+  }, [trash, logActivity]);
 
   const reorder = useCallback((activeId: string, overId: string) => {
     pushUndo();

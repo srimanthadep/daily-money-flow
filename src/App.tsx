@@ -6,7 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import Index from "./pages/Index.tsx";
 import AnalyticsPage from "./pages/Analytics.tsx";
 import ExpensesPage from "./pages/Expenses.tsx";
-import SQLConsole from "./pages/SQLConsole.tsx";
+import ActivityLog from "./pages/ActivityLog.tsx";
 import NotFound from "./pages/NotFound.tsx";
 import { MainLayout } from "./components/layout/MainLayout.tsx";
 
@@ -28,7 +28,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/analytics" element={<AnalyticsPage />} />
             <Route path="/expenses" element={<ExpensesPage />} />
-            <Route path="/sql-console" element={<SQLConsole />} />
+            <Route path="/activity" element={<ActivityLog />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </MainLayout>

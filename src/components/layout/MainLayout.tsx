@@ -1,9 +1,26 @@
 import { Link, useLocation } from "react-router-dom";
-import { ReceiptText, IndianRupee, CloudOff, Database, TrendingUp } from "lucide-react";
+import { ReceiptText, IndianRupee, CloudOff, Database, TrendingUp, Activity } from "lucide-react";
 import InstallPromptBanner from "./InstallPromptBanner";
 import { useOfflineSync } from "@/hooks/useOfflineSync";
-import { Show, SignInButton, SignUpButton, UserButton } from "@clerk/react";
+import { Show, SignInButton, SignUpButton, UserButton, useUser } from "@clerk/react";
 import { useSupabaseSync } from "@/hooks/useSupabaseSync";
+import { useActivityLog } from "@/hooks/useActivityLog";
+import { useEffect, useRef } from "react";
+
+function LoginLogger() {
+  const { user, isLoaded } = useUser();
+  const { logActivity } = useActivityLog();
+  const loggedRef = useRef(false);
+
+  useEffect(() => {
+    if (isLoaded && user && !loggedRef.current) {
+      logActivity("LOGIN", "User logged in to the dashboard");
+      loggedRef.current = true;
+    }
+  }, [isLoaded, user, logActivity]);
+
+  return null;
+}
 
 interface Props {
   children: React.ReactNode;
@@ -18,7 +35,7 @@ export function MainLayout({ children }: Props) {
     { name: "Tracker", path: "/", icon: IndianRupee },
     { name: "Analytics", path: "/analytics", icon: TrendingUp },
     { name: "Expenses", path: "/expenses", icon: ReceiptText },
-    { name: "SQL Console", path: "/sql-console", icon: Database },
+    { name: "Activity", path: "/activity", icon: Activity },
   ];
 
   return (
@@ -63,6 +80,7 @@ export function MainLayout({ children }: Props) {
       {/* Main Content */}
       <main className="flex-1 overflow-hidden relative">
         <Show when="signed-in">
+          <LoginLogger />
           <div className="h-full animate-in fade-in duration-500">
             {children}
           </div>

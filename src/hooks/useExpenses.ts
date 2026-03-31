@@ -3,6 +3,7 @@ import { supabase, isConfigured } from "@/lib/supabase";
 import { Expense } from "@/types/entry";
 import { toast } from "sonner";
 import { useUser } from "@clerk/react";
+import { useActivityLog } from "./useActivityLog";
 
 export function useExpenses() {
   const { user } = useUser();
@@ -10,6 +11,7 @@ export function useExpenses() {
   const STORAGE_KEY = `expense_data_${userId}`;
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
+  const { logActivity } = useActivityLog();
 
   // Initial fetch
   useEffect(() => {
@@ -60,6 +62,7 @@ export function useExpenses() {
     const previousExpenses = [...expenses];
     setExpenses(prev => [localExp, ...prev]);
     localStorage.setItem(STORAGE_KEY, JSON.stringify([localExp, ...expenses]));
+    logActivity("EXPENSE_ADDED", `Added expense: ${expense.title} for ₹${expense.amount}`);
 
     if (!isConfigured || !user) {
       toast.success("Expense saved locally");
@@ -95,8 +98,11 @@ export function useExpenses() {
 
   const deleteExpense = async (id: string) => {
     const previousExpenses = [...expenses];
+    const itemToDelete = expenses.find(e => e.id === id);
     setExpenses(prev => prev.filter(e => e.id !== id));
     localStorage.setItem(STORAGE_KEY, JSON.stringify(expenses.filter(e => e.id !== id)));
+    
+    if (itemToDelete) logActivity("EXPENSE_DELETED", `Deleted expense: ${itemToDelete.title}`);
 
     if (!isConfigured || !user) {
       toast.success("Deleted locally");
