@@ -1,8 +1,8 @@
 import { Link, useLocation } from "react-router-dom";
-import { IndianRupee, CloudOff, Database, Activity } from "lucide-react";
+import { IndianRupee, CloudOff, Activity } from "lucide-react";
 import InstallPromptBanner from "./InstallPromptBanner";
 import { useOfflineSync } from "@/hooks/useOfflineSync";
-import { Show, SignInButton, SignUpButton, UserButton, useUser } from "@clerk/react";
+import { Show, SignIn, UserButton, useUser } from "@clerk/react";
 import { useSupabaseSync } from "@/hooks/useSupabaseSync";
 import { useActivityLog } from "@/hooks/useActivityLog";
 import { useEffect, useRef } from "react";
@@ -123,15 +123,6 @@ export function MainLayout({ children }: Props) {
                   />
                 </div>
               </Show>
-
-              <Show when="signed-out">
-                <SignInButton mode="modal">
-                  <button className="px-3.5 py-1.5 sm:px-4 sm:py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-bold rounded-xl shadow-md shadow-indigo-100 transition-all active:scale-95 flex items-center gap-1.5">
-                    <span>Sign In</span>
-                    <span className="opacity-60">→</span>
-                  </button>
-                </SignInButton>
-              </Show>
             </div>
           </div>
         </div>
@@ -147,58 +138,8 @@ export function MainLayout({ children }: Props) {
         </Show>
 
         <Show when="signed-out">
-          <div className="h-screen w-full flex items-center justify-center p-4 bg-[#fafaff] relative overflow-hidden">
-            {/* Background Decorations */}
-            <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-indigo-50 rounded-full blur-[120px] opacity-60" />
-            <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-blue-50 rounded-full blur-[120px] opacity-60" />
-            
-            <div className="max-w-sm w-full relative z-30">
-              <div className="bg-white/80 backdrop-blur-xl rounded-[2rem] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.08)] border border-white p-6 md:p-8 text-center space-y-5 animate-in zoom-in fade-in duration-700">
-                {/* Logo Area */}
-                <div className="relative group">
-                  <div className="absolute inset-0 bg-indigo-600 blur-2xl opacity-20" />
-                  <div className="relative w-16 h-16 bg-gradient-to-br from-indigo-500 to-indigo-700 rounded-2xl shadow-xl shadow-indigo-100 flex items-center justify-center mx-auto">
-                    <IndianRupee className="w-8 h-8 text-white" />
-                  </div>
-                </div>
-                
-                <div className="space-y-1">
-                  <h1 className="text-2xl font-black text-slate-900 tracking-tight">
-                    Smart Money <br />
-                    <span className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-blue-600">
-                      Flow Control
-                    </span>
-                  </h1>
-                </div>
-                
-                <div className="flex flex-col gap-3">
-                  <SignInButton mode="modal">
-                    <button className="h-14 bg-slate-900 hover:bg-black text-white text-base font-bold rounded-2xl shadow-xl shadow-slate-100 transition-all active:scale-[0.98] flex items-center justify-center gap-2">
-                      Sign In
-                      <span className="text-white/30">→</span>
-                    </button>
-                  </SignInButton>
-                  
-                  <SignUpButton mode="modal">
-                    <button className="h-14 bg-white hover:bg-slate-50 text-slate-600 text-base font-bold rounded-2xl border-2 border-slate-100 transition-all active:scale-[0.98]">
-                      Create Account
-                    </button>
-                  </SignUpButton>
-                </div>
-
-                <div className="pt-2 flex items-center justify-center gap-4 opacity-30">
-                  <div className="flex items-center gap-1">
-                    <Database className="w-3 h-3" />
-                    <span className="text-[8px] font-bold tracking-widest uppercase">Safe</span>
-                  </div>
-                  <div className="h-2 w-px bg-slate-200" />
-                  <div className="flex items-center gap-1">
-                    <CloudOff className="w-3 h-3" />
-                    <span className="text-[8px] font-bold tracking-widest uppercase">Sync</span>
-                  </div>
-                </div>
-              </div>
-            </div>
+          <div className="min-h-[calc(100vh-120px)] w-full flex items-center justify-center p-4">
+            <SignIn routing="hash" />
           </div>
         </Show>
       </main>
