@@ -7,9 +7,15 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Dependencies
 node_modules
+**/node_modules
+
+# Builds
 dist
+**/dist
 dist-ssr
+**/dev-dist
 *.local
 
 # Editor directories and files
@@ -23,7 +29,10 @@ dist-ssr
 *.sln
 *.sw?
 
-# Security
+# Security & Environment
 .env
 .env.*
+**/.env
+**/.env.*
 !.env.example
+!**/.env.example

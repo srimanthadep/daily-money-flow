@@ -19,7 +19,6 @@ import { PasswordPrompt } from "@/components/auth/PasswordPrompt";
 import { TableSkeleton } from "@/components/tracker/TableSkeleton";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useEntries } from "@/hooks/useEntries";
-import { useExpenses } from "@/hooks/useExpenses";
 import { exportToCSV, exportToExcel } from "@/lib/export";
 import GradientText from "@/components/ui/GradientText";
 
@@ -61,8 +60,6 @@ const Index = () => {
   } = useEntries();
 
   const { syncToSheets, isSyncing } = useGoogleSync();
-  const { expenses, loading: expensesLoading } = useExpenses();
-  const expensesTotal = useMemo(() => expenses.reduce((s, e) => s + e.amount, 0), [expenses]);
 
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [trashOpen, setTrashOpen] = useState(false);
@@ -251,12 +248,9 @@ const Index = () => {
         <div className="no-print">
           <DashboardSummary
             totalPending={totalPending}
-            totalPaid={totalPaid}
-            totalAll={totalAll}
             pendingCount={pendingCount}
             paidCount={paidCount}
             totalCount={totalCount}
-            expensesTotal={expensesTotal}
           />
         </div>
 

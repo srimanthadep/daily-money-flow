@@ -1,13 +1,12 @@
-import { AlertCircle, CheckCircle2, DollarSign, Users } from "lucide-react";
+import { AlertCircle, Users } from "lucide-react";
 
 interface Props {
   totalPending: number;
-  totalPaid: number;
-  totalAll: number;
   pendingCount: number;
-  paidCount: number;
+  paidCount?: number;
   totalCount: number;
-  expensesTotal?: number;
+  totalPaid?: number;
+  totalAll?: number;
 }
 
 function fmt(n: number) {
@@ -16,12 +15,9 @@ function fmt(n: number) {
 
 export function DashboardSummary({
   totalPending,
-  totalPaid,
-  totalAll,
   pendingCount,
-  paidCount,
+  paidCount = 0,
   totalCount,
-  expensesTotal = 0,
 }: Props) {
   const cards = [
     {
@@ -31,22 +27,6 @@ export function DashboardSummary({
       icon: AlertCircle,
       iconClass: "text-orange-500",
       bgClass: "bg-orange-500/10",
-    },
-    {
-      label: "Net Balance",
-      value: fmt(totalPending - expensesTotal),
-      sub: "pending minus expenses",
-      icon: CheckCircle2,
-      iconClass: "text-blue-500",
-      bgClass: "bg-blue-500/10",
-    },
-    {
-      label: "Daily Expenses",
-      value: fmt(expensesTotal),
-      sub: "your total spending",
-      icon: DollarSign,
-      iconClass: "text-rose-500",
-      bgClass: "bg-rose-500/10",
     },
     {
       label: "People Count",
@@ -60,7 +40,7 @@ export function DashboardSummary({
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 md:gap-4">
+      <div className="grid grid-cols-2 gap-2 md:gap-4">
         {cards.map((c) => (
           <div
             key={c.label}

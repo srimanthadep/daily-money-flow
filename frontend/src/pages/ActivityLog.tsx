@@ -10,7 +10,6 @@ import {
   RefreshCcw, 
   CheckCircle, 
   Clock, 
-  Receipt,
   FileX,
   Search,
   Filter
@@ -49,10 +48,6 @@ export default function ActivityLog() {
         return <CheckCircle className="w-5 h-5 text-emerald-600" />;
       case "MARKED_PENDING":
         return <Clock className="w-5 h-5 text-amber-500" />;
-      case "EXPENSE_ADDED":
-        return <Receipt className="w-5 h-5 text-emerald-500" />;
-      case "EXPENSE_DELETED":
-        return <Trash2 className="w-5 h-5 text-rose-500" />;
       default:
         return <Activity className="w-5 h-5 text-slate-500" />;
     }
@@ -62,13 +57,11 @@ export default function ActivityLog() {
     switch (action) {
       case "LOGIN": return "bg-blue-50 border-blue-100";
       case "ENTRY_ADDED":
-      case "EXPENSE_ADDED":
       case "MARKED_PAID": return "bg-emerald-50 border-emerald-100";
       case "ENTRY_UPDATED":
       case "MARKED_PENDING": return "bg-amber-50 border-amber-100";
       case "ENTRY_DELETED":
-      case "ENTRY_TRASHED":
-      case "EXPENSE_DELETED": return "bg-rose-50 border-rose-100";
+      case "ENTRY_TRASHED": return "bg-rose-50 border-rose-100";
       case "ENTRY_RESTORED": return "bg-indigo-50 border-indigo-100";
       default: return "bg-slate-50 border-slate-100";
     }

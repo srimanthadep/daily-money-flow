@@ -10,9 +10,7 @@ export type ActivityAction =
   | "ENTRY_RESTORED"
   | "ENTRY_TRASHED" 
   | "MARKED_PAID" 
-  | "MARKED_PENDING" 
-  | "EXPENSE_ADDED" 
-  | "EXPENSE_DELETED";
+  | "MARKED_PENDING";
 
 export interface ActivityLogEntry {
   id: string;
