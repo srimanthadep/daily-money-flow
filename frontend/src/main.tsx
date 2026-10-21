@@ -5,11 +5,36 @@ import { ClerkProvider } from "@clerk/react";
 import App from "./App.tsx";
 import "./index.css";
 
-// Register Service Worker
+// Automatically reload when a new service worker takes control
+if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (!refreshing) {
+      refreshing = true;
+      window.location.reload();
+    }
+  });
+}
+
+// Register Service Worker with instant automatic background update
 const updateSW = registerSW({
+  immediate: true,
   onNeedRefresh() {
-    if (confirm('A new version is available! Refresh now to get the latest features?')) {
-      updateSW(true);
+    // Instantly activate new service worker and refresh the page automatically
+    updateSW(true);
+  },
+  onRegisteredSW(_swUrl, registration) {
+    if (registration) {
+      // Check for updates when user returns to / opens the tab
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+          registration.update().catch(() => {});
+        }
+      });
+      // Also periodically check for updates
+      setInterval(() => {
+        registration.update().catch(() => {});
+      }, 15 * 60 * 1000);
     }
   },
   onOfflineReady() {
