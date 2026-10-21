@@ -14,7 +14,29 @@ const supabase = isConfigured ? createClient(supabaseUrl, supabaseKey) : null;
 
 // Middleware
 app.disable("x-powered-by");
-app.use(cors());
+
+const allowedOrigins = [
+  "https://admin.upender.in",
+  process.env.FRONTEND_URL,
+  "http://localhost:5173",
+  "http://localhost:3000",
+].filter(Boolean);
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+      if (
+        allowedOrigins.includes(origin) ||
+        allowedOrigins.some((allowed) => origin.startsWith(allowed))
+      ) {
+        return callback(null, true);
+      }
+      return callback(new Error("Blocked by CORS policy"));
+    },
+    credentials: true,
+  })
+);
 app.use(express.json());
 
 // Status payload

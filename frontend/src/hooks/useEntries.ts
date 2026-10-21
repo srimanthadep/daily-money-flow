@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { LedgerEntry } from "@/types/entry";
 import { format, subDays } from "date-fns";
 import { SEED_DATA } from "@/lib/seedData";
@@ -6,34 +6,23 @@ import { arrayMove } from "@dnd-kit/sortable";
 import { supabase, isConfigured } from "@/lib/supabase";
 import { toast } from "sonner";
 import { useUser } from "@clerk/react";
-import { useGoogleSync } from "./useGoogleSync";
 import { useActivityLog } from "./useActivityLog";
+import { useDateLock, checkIsDateLocked } from "./useDateLock";
 
 function getToday(): string {
   const now = new Date();
-  // If current time is before 3 AM, we are still conceptually in the previous day
+  // If current time is before 3 AM, we are conceptually in the previous day
   if (now.getHours() < 3) {
     return format(subDays(now, 1), "yyyy-MM-dd");
   }
   return format(now, "yyyy-MM-dd");
 }
 
-function checkIsDateLocked(date: string): boolean {
-  // A date is locked if current time is >= (date + 1 day) at 03:00 AM
-  const now = new Date();
-  const dateObj = new Date(date + "T00:00:00");
-  const lockTime = new Date(dateObj);
-  lockTime.setDate(lockTime.getDate() + 1);
-  lockTime.setHours(3, 0, 0, 0);
-  return now >= lockTime;
-}
-
 export function useEntries() {
   const { user } = useUser();
-  const userId = user?.id || 'local';
+  const userId = user?.id || "local";
   const SNAP = `snap:${userId}:`;
   const LATEST = `latest:${userId}`;
-  const UNLOCK_KEY = `unlocked:${userId}`;
 
   const todayDate = getToday();
   const [entries, setEntries] = useState<LedgerEntry[]>([]);
@@ -45,116 +34,43 @@ export function useEntries() {
   const [isLoading, setIsLoading] = useState(true);
   const { logActivity } = useActivityLog();
 
+  // Modular date locking hook
+  const { isLocked, unlockedUntil, unlockDate, lockDate } = useDateLock(viewDate);
+
   const isToday = viewDate === todayDate;
-
-  const [forceUnlocked, setForceUnlocked] = useState<Record<string, number>>(() => {
-    const local = localStorage.getItem(UNLOCK_KEY);
-    return local ? JSON.parse(local) : {};
-  });
-
-  const isLocked = useMemo(() => {
-    const expiration = forceUnlocked[viewDate];
-    if (expiration && Date.now() < expiration) return false;
-    return checkIsDateLocked(viewDate);
-  }, [viewDate, forceUnlocked]);
-
-  const saveUnlockState = async (date: string, expiresAt: number | null) => {
-    setForceUnlocked(prev => {
-      const next = { ...prev };
-      if (expiresAt === null) {
-        delete next[date];
-      } else {
-        next[date] = expiresAt;
-      }
-      localStorage.setItem(UNLOCK_KEY, JSON.stringify(next));
-      return next;
-    });
-
-    if (isConfigured) {
-      if (expiresAt === null) {
-        await supabase.from("unlocked_dates").delete().eq("date", date).eq("user_id", user.id);
-      } else {
-        const { data: existing } = await supabase
-          .from("unlocked_dates")
-          .select("id")
-          .eq("date", date)
-          .eq("user_id", user.id)
-          .maybeSingle();
-
-        if (existing) {
-          await supabase
-            .from("unlocked_dates")
-            .update({ expires_at: expiresAt })
-            .eq("date", date)
-            .eq("user_id", user.id);
-        } else {
-          await supabase
-            .from("unlocked_dates")
-            .insert({ 
-              date, 
-              expires_at: expiresAt, 
-              user_id: user.id,
-              username: user.username || user.firstName || user.fullName || 'Guest'
-            });
-        }
-      }
-    }
-  };
-
-  const unlockDate = useCallback(async (date: string, password?: string, hours: number = 1) => {
-    const adminPassword = import.meta.env.VITE_ADMIN_PASSWORD || "1234";
-    if (password === adminPassword) {
-      const expiration = Date.now() + (hours * 3600000);
-      await saveUnlockState(date, expiration);
-      toast.success(`Date unlocked for ${hours} hour${hours > 1 ? 's' : ''}`);
-      return true;
-    } else {
-      toast.error("Incorrect password");
-      return false;
-    }
-  }, [isConfigured]);
-
-  const { syncToSheets } = useGoogleSync();
-
-  const lockDate = useCallback(async (date: string, password?: string) => {
-    const adminPassword = import.meta.env.VITE_ADMIN_PASSWORD || "1234";
-    if (password === adminPassword) {
-      await saveUnlockState(date, null);
-      toast.success("Date locked successfully");
-      
-      // Auto-sync to Google Sheets on lock
-      syncToSheets(date);
-      
-      return true;
-    } else {
-      toast.error("Incorrect password");
-      return false;
-    }
-  }, [isConfigured, syncToSheets]);
+  const isLoadedRef = useRef(false);
+  const snapDatesLoadedRef = useRef(false);
 
   // ── Read / write helpers for Local Fallback ──────────────────────────────
-  const readLocalSnap = (date: string): LedgerEntry[] | null => {
-    const raw = localStorage.getItem(SNAP + date);
-    return raw ? JSON.parse(raw) : null;
-  };
+  const readLocalSnap = useCallback((date: string): LedgerEntry[] | null => {
+    try {
+      const raw = localStorage.getItem(SNAP + date);
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  }, [SNAP]);
 
-  const getLocalSnapDates = (): string[] => {
+  const getLocalSnapDates = useCallback((): string[] => {
     const dates: string[] = [];
     for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && key.startsWith(SNAP) && key !== LATEST) {
-            dates.push(key.slice(SNAP.length));
-        }
+      const key = localStorage.key(i);
+      if (key && key.startsWith(SNAP) && key !== LATEST) {
+        dates.push(key.slice(SNAP.length));
+      }
     }
     return dates;
-  };
+  }, [SNAP, LATEST]);
 
   // ── Initial Data Loading ────────────────────────────────────────────────
   useEffect(() => {
+    let isCancelled = false;
+
     const init = async () => {
+      isLoadedRef.current = false;
       setIsLoading(true);
-      
-      const loadFromStorage = async (date: string) => {
+
+      const loadFromStorage = async (date: string): Promise<LedgerEntry[]> => {
         if (isConfigured && user) {
           const { data } = await supabase
             .from("daily_snapshots")
@@ -162,36 +78,41 @@ export function useEntries() {
             .eq("date", date)
             .eq("user_id", user.id)
             .maybeSingle();
-          
-          if (data && data.data && (data.data as LedgerEntry[]).length > 0) return data.data as LedgerEntry[];
 
-          // 1. If we don't have a snapshot, check if the Previous Day is locked
+          if (data && data.data && (data.data as LedgerEntry[]).length > 0) {
+            return data.data as LedgerEntry[];
+          }
+
+          // 1. If we don't have a snapshot, check if previous day is locked
           const dateObj = new Date(date + "T00:00:00");
           const prevDateStr = format(subDays(dateObj, 1), "yyyy-MM-dd");
           const isPrevLocked = checkIsDateLocked(prevDateStr);
 
-          // 2. If the previous day is NOT locked, this is a future or currently active date.
+          // 2. If the previous day is NOT locked, this is a future or currently active date
           if (!isPrevLocked) return [];
 
           // 3. Find historical data to carry over
           let sourceData: LedgerEntry[] = [];
-          
+
           const { data: latestBefore } = await supabase
             .from("daily_snapshots")
             .select("date, data")
             .lt("date", date)
             .eq("user_id", user.id)
             .order("date", { ascending: false });
-          
+
           if (latestBefore && latestBefore.length > 0) {
-            const lockedSnap = latestBefore.find(s => checkIsDateLocked(s.date));
+            const lockedSnap = latestBefore.find((s) => checkIsDateLocked(s.date));
             if (lockedSnap && lockedSnap.data) {
               sourceData = lockedSnap.data as LedgerEntry[];
             }
           }
 
           if (sourceData.length === 0) {
-            const localDates = getLocalSnapDates().filter(d => d < date).sort().reverse();
+            const localDates = getLocalSnapDates()
+              .filter((d) => d < date)
+              .sort()
+              .reverse();
             for (const ld of localDates) {
               if (checkIsDateLocked(ld)) {
                 const prevData = readLocalSnap(ld);
@@ -205,7 +126,7 @@ export function useEntries() {
 
           // Process recurring entries: Reset status to Pending if it's a new day
           if (sourceData.length > 0) {
-            return sourceData.map(e => {
+            return sourceData.map((e) => {
               if (e.isRecurring) {
                 return { ...e, status: "Pending" as const, paidOn: undefined };
               }
@@ -213,9 +134,14 @@ export function useEntries() {
             });
           }
         }
-        
-        // Final Fallback
-        if (date === todayDate && getLocalSnapDates().length === 0 && userId === 'local') {
+
+        // Final Fallback for demo in development only
+        if (
+          date === todayDate &&
+          getLocalSnapDates().length === 0 &&
+          userId === "local" &&
+          import.meta.env.DEV
+        ) {
           return SEED_DATA;
         }
 
@@ -223,103 +149,87 @@ export function useEntries() {
       };
 
       const result = await loadFromStorage(viewDate);
-      setEntries(result);
-      
-      // Load snap dates once
-      if (snapDates.length === 0 && isConfigured && user) {
-        const { data: snaps } = await supabase
-          .from("daily_snapshots")
-          .select("date")
-          .eq("user_id", user.id)
-          .order("date", { ascending: false });
-        if (snaps) setSnapDates(snaps.map(s => s.date));
+      if (!isCancelled) {
+        setEntries(result);
 
-        // Sync unlocked dates from Supabase
-        const { data: unlocked } = await supabase
-          .from("unlocked_dates")
-          .select("*")
-          .eq("user_id", user.id)
-          .gt("expires_at", Date.now());
-        
-        if (unlocked) {
-          const remoteMap: Record<string, number> = {};
-          unlocked.forEach(u => remoteMap[u.date] = Number(u.expires_at));
-          
-          setForceUnlocked(prev => {
-            const next = { ...prev, ...remoteMap };
-            localStorage.setItem(UNLOCK_KEY, JSON.stringify(next));
-            return next;
-          });
+        // Load snap dates once, tracked by snapDatesLoadedRef
+        if (!snapDatesLoadedRef.current && isConfigured && user) {
+          const { data: snaps } = await supabase
+            .from("daily_snapshots")
+            .select("date")
+            .eq("user_id", user.id)
+            .order("date", { ascending: false });
+          if (snaps) {
+            setSnapDates(snaps.map((s) => s.date));
+            snapDatesLoadedRef.current = true;
+          }
+        } else if (!snapDatesLoadedRef.current) {
+          setSnapDates(
+            Array.from(new Set([...getLocalSnapDates(), todayDate]))
+              .sort()
+              .reverse()
+          );
+          snapDatesLoadedRef.current = true;
         }
-      } else if (snapDates.length === 0) {
-        setSnapDates(Array.from(new Set([...getLocalSnapDates(), todayDate])).sort().reverse());
+
+        setIsLoading(false);
+        // Gate saveToCloud so it only triggers on actual subsequent user edits
+        isLoadedRef.current = true;
       }
-      
-      setIsLoading(false);
     };
 
     init();
-  }, [viewDate, isConfigured]);
+    return () => {
+      isCancelled = true;
+    };
+  }, [viewDate, isConfigured, user, userId, todayDate, getLocalSnapDates, readLocalSnap]);
 
   // ── Sync to Cloud ───────────────────────────────────────────────────────
-  const saveToCloud = async (date: string, data: LedgerEntry[]) => {
-    localStorage.setItem(SNAP + date, JSON.stringify(data));
-    localStorage.setItem(LATEST, date);
+  const saveToCloud = useCallback(
+    async (date: string, data: LedgerEntry[]) => {
+      localStorage.setItem(SNAP + date, JSON.stringify(data));
+      localStorage.setItem(LATEST, date);
 
-    if (!isConfigured || !user) return;
+      if (!isConfigured || !user) return;
 
-    try {
-      // Check if a record exists first
-      const { data: existing } = await supabase
-        .from("daily_snapshots")
-        .select("id")
-        .eq("date", date)
-        .eq("user_id", user.id)
-        .maybeSingle();
-
-      let error;
-      if (existing) {
-        // Update existing record
-        ({ error } = await supabase
-          .from("daily_snapshots")
-          .update({ data })
-          .eq("date", date)
-          .eq("user_id", user.id));
-      } else {
-        // Insert new record
-        ({ error } = await supabase
-          .from("daily_snapshots")
-          .insert({ 
-            date, 
-            data, 
+      try {
+        const { error } = await supabase.from("daily_snapshots").upsert(
+          {
+            date,
+            data,
             user_id: user.id,
-            username: user.username || user.firstName || user.fullName || 'Guest'
-          }));
-      }
+            username:
+              user.username || user.firstName || user.fullName || "Guest",
+          },
+          { onConflict: "date,user_id" }
+        );
 
-      if (error) {
-        console.error("Supabase save error:", error.code, error.message, error.details, error.hint);
-        toast.error(`Save failed: ${error.message}`);
-        return;
-      }
+        if (error) {
+          console.error("Supabase save error:", error.message);
+          toast.error(`Save failed: ${error.message}`);
+          return;
+        }
 
-      if (!snapDates.includes(date)) {
-        setSnapDates(prev => Array.from(new Set([...prev, date])).sort().reverse());
+        setSnapDates((prev) =>
+          prev.includes(date) ? prev : Array.from(new Set([...prev, date])).sort().reverse()
+        );
+      } catch (err) {
+        console.error("Cloud save error:", err);
       }
-    } catch (err) {
-      console.error("Cloud save error:", err);
-    }
-  };
+    },
+    [SNAP, LATEST, user]
+  );
 
-  // ── Persist entries when they change ────────────────────────────
+  // ── Persist entries ONLY when user changes them (not on mount) ───────────
   useEffect(() => {
+    if (!isLoadedRef.current) return; // Prevent double-write bug on load
     if (entries.length > 0) {
       const timer = setTimeout(() => {
         saveToCloud(viewDate, entries);
       }, 1000);
       return () => clearTimeout(timer);
     }
-  }, [entries, viewDate]);
+  }, [entries, viewDate, saveToCloud]);
 
   // ── Push to undo ──────────────────────────────────────────────────────
   const pushUndo = useCallback(() => {
@@ -328,10 +238,10 @@ export function useEntries() {
 
   // ── Filtered & sorted ─────────────────────────────────────────────────
   const sortedEntries = useMemo(() => {
-    let list = [...entries].sort((a, b) => (a.order || 0) - (b.order || 0));
+    const list = [...entries].sort((a, b) => (a.order || 0) - (b.order || 0));
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
-      list = list.filter(
+      return list.filter(
         (e) =>
           e.name.toLowerCase().includes(q) ||
           (e.notes && e.notes.toLowerCase().includes(q))
@@ -341,130 +251,149 @@ export function useEntries() {
   }, [entries, searchQuery]);
 
   // ── CRUD ───────────────────────────────────────────────────────────────
-  const addEntry = useCallback(async (data: { 
-    name: string; 
-    amount: number; 
-    notes: string;
-    isRecurring?: boolean;
-    recurringFrequency?: "Daily" | "Weekly" | "Monthly";
-  }) => {
-    const tempId = crypto.randomUUID();
-    const now = new Date().toISOString();
-    const maxOrder = entries.reduce((m, e) => Math.max(m, e.order || 0), 0);
-    
-    const newEntry: LedgerEntry = {
-      id: tempId,
-      ...data,
-      status: "Pending",
-      order: maxOrder + 1,
-      createdAt: now,
-      updatedAt: now,
-    };
+  const addEntry = useCallback(
+    async (data: {
+      name: string;
+      amount: number;
+      notes: string;
+      isRecurring?: boolean;
+      recurringFrequency?: "Daily" | "Weekly" | "Monthly";
+    }) => {
+      const tempId = crypto.randomUUID();
+      const now = new Date().toISOString();
+      const maxOrder = entries.reduce((m, e) => Math.max(m, e.order || 0), 0);
 
-    const previousEntries = [...entries];
-    setEntries((prev) => [...prev, newEntry]);
-    
-    try {
-      if (isConfigured && user) {
-        const { data: savedData, error } = await supabase
-          .from("daily_snapshots")
-          .select("data")
-          .eq("date", viewDate)
-          .eq("user_id", user.id)
-          .maybeSingle();
+      const newEntry: LedgerEntry = {
+        id: tempId,
+        ...data,
+        status: "Pending",
+        order: maxOrder + 1,
+        createdAt: now,
+        updatedAt: now,
+      };
 
-        const currentData = savedData?.data ? (savedData.data as LedgerEntry[]) : previousEntries;
-        const updatedData = [...currentData, newEntry];
+      const previousEntries = [...entries];
+      const updatedData = [...entries, newEntry];
+      setEntries(updatedData);
 
-        const { error: saveError } = await supabase
-          .from("daily_snapshots")
-          .upsert({ 
-            date: viewDate, 
-            data: updatedData, 
-            user_id: user.id,
-            username: user.username || user.firstName || user.fullName || 'Guest'
-          }, { onConflict: 'date,user_id' });
+      try {
+        if (isConfigured && user) {
+          const { error: saveError } = await supabase.from("daily_snapshots").upsert(
+            {
+              date: viewDate,
+              data: updatedData,
+              user_id: user.id,
+              username:
+                user.username || user.firstName || user.fullName || "Guest",
+            },
+            { onConflict: "date,user_id" }
+          );
 
-        if (saveError) throw saveError;
+          if (saveError) throw saveError;
+        }
+        toast.success("Added " + data.name);
+        logActivity(
+          "ENTRY_ADDED",
+          `Added ${data.name} with amount ₹${data.amount}`
+        );
+      } catch (err) {
+        console.error("Add error:", err);
+        setEntries(previousEntries);
+        toast.error("Failed to sync new entry");
       }
-      toast.success("Added " + data.name);
-      logActivity("ENTRY_ADDED", `Added ${data.name} with amount ₹${data.amount}`);
-    } catch (err) {
-      console.error("Add error:", err);
-      setEntries(previousEntries);
-      toast.error("Failed to sync new entry");
-    }
-  }, [entries, isConfigured, user, viewDate]);
+    },
+    [entries, user, viewDate, logActivity]
+  );
 
-  const updateEntry = useCallback(async (id: string, updates: Partial<LedgerEntry>) => {
-    const previousEntries = [...entries];
-    const prevEntry = entries.find(e => e.id === id);
-    const updatedEntries = entries.map((e) =>
-      e.id === id ? { ...e, ...updates, updatedAt: new Date().toISOString() } : e
-    );
-    setEntries(updatedEntries);
+  const updateEntry = useCallback(
+    async (id: string, updates: Partial<LedgerEntry>) => {
+      const previousEntries = [...entries];
+      const prevEntry = entries.find((e) => e.id === id);
+      const updatedEntries = entries.map((e) =>
+        e.id === id
+          ? { ...e, ...updates, updatedAt: new Date().toISOString() }
+          : e
+      );
+      setEntries(updatedEntries);
 
-    try {
-      if (isConfigured && user) {
-        const { error } = await supabase
-          .from("daily_snapshots")
-          .upsert({ 
-            date: viewDate, 
-            data: updatedEntries, 
-            user_id: user.id,
-            username: user.username || user.firstName || user.fullName || 'Guest'
-          }, { onConflict: 'date,user_id' });
-        if (error) throw error;
+      try {
+        if (isConfigured && user) {
+          const { error } = await supabase.from("daily_snapshots").upsert(
+            {
+              date: viewDate,
+              data: updatedEntries,
+              user_id: user.id,
+              username:
+                user.username || user.firstName || user.fullName || "Guest",
+            },
+            { onConflict: "date,user_id" }
+          );
+          if (error) throw error;
+        }
+        const updatedEntry = updatedEntries.find((e) => e.id === id);
+        if (updatedEntry && prevEntry) {
+          if (
+            updates.amount !== undefined &&
+            prevEntry.amount !== updates.amount
+          ) {
+            logActivity(
+              "ENTRY_UPDATED",
+              `Updated ${updatedEntry.name}'s amount: ₹${prevEntry.amount} → ₹${updates.amount}`
+            );
+          } else {
+            logActivity("ENTRY_UPDATED", `Updated entry: ${updatedEntry.name}`);
+          }
+        }
+      } catch (err) {
+        console.error("Update error:", err);
+        setEntries(previousEntries);
+        toast.error("Update failed to sync");
       }
-      const updatedEntry = updatedEntries.find(e => e.id === id);
-      if (updatedEntry && prevEntry) {
-         if (updates.amount !== undefined && prevEntry.amount !== updates.amount) {
-           logActivity("ENTRY_UPDATED", `Updated ${updatedEntry.name}'s amount: ₹${prevEntry.amount} → ₹${updates.amount}`);
-         } else {
-           logActivity("ENTRY_UPDATED", `Updated entry: ${updatedEntry.name}`);
-         }
+    },
+    [entries, user, viewDate, logActivity]
+  );
+
+  const deleteEntry = useCallback(
+    async (id: string) => {
+      const previousEntries = [...entries];
+      const itemToDelete = entries.find((e) => e.id === id);
+      const updatedEntries = entries.filter((e) => e.id !== id);
+
+      setEntries(updatedEntries);
+      if (itemToDelete) setTrash((t) => [...t, itemToDelete]);
+
+      try {
+        if (isConfigured && user) {
+          const { error } = await supabase.from("daily_snapshots").upsert(
+            {
+              date: viewDate,
+              data: updatedEntries,
+              user_id: user.id,
+              username:
+                user.username || user.firstName || user.fullName || "Guest",
+            },
+            { onConflict: "date,user_id" }
+          );
+          if (error) throw error;
+        }
+        toast.error("Entry moved to trash");
+        if (itemToDelete) {
+          logActivity("ENTRY_TRASHED", `Moved ${itemToDelete.name} to trash`);
+        }
+      } catch (err) {
+        console.error("Delete error:", err);
+        setEntries(previousEntries);
+        if (itemToDelete) setTrash((t) => t.filter((x) => x.id !== id));
+        toast.error("Delete failed to sync");
       }
-    } catch (err) {
-      console.error("Update error:", err);
-      setEntries(previousEntries);
-      toast.error("Update failed to sync");
-    }
-  }, [entries, isConfigured, user, viewDate]);
+    },
+    [entries, user, viewDate, logActivity]
+  );
 
-  const deleteEntry = useCallback(async (id: string) => {
-    const previousEntries = [...entries];
-    const itemToDelete = entries.find(e => e.id === id);
-    const updatedEntries = entries.filter((e) => e.id !== id);
-    
-    setEntries(updatedEntries);
-    if (itemToDelete) setTrash((t) => [...t, itemToDelete]);
-
-    try {
-      if (isConfigured && user) {
-        const { error } = await supabase
-          .from("daily_snapshots")
-          .upsert({ 
-            date: viewDate, 
-            data: updatedEntries, 
-            user_id: user.id,
-            username: user.username || user.firstName || user.fullName || 'Guest'
-          }, { onConflict: 'date,user_id' });
-        if (error) throw error;
-      }
-      toast.error("Entry moved to trash");
-      if (itemToDelete) logActivity("ENTRY_TRASHED", `Moved ${itemToDelete.name} to trash`);
-    } catch (err) {
-      console.error("Delete error:", err);
-      setEntries(previousEntries);
-      if (itemToDelete) setTrash((t) => t.filter(x => x.id !== id));
-      toast.error("Delete failed to sync");
-    }
-  }, [entries, isConfigured, user, viewDate]);
-
-  const markPaid = useCallback((id: string) => {
-    pushUndo();
-    setEntries((prev) =>
-      prev.map((e) =>
+  const markPaid = useCallback(
+    (id: string) => {
+      pushUndo();
+      const updated = entries.map((e) =>
         e.id === id
           ? {
               ...e,
@@ -473,22 +402,20 @@ export function useEntries() {
               updatedAt: new Date().toISOString(),
             }
           : e
-      )
-    );
-    // Optimistic Save
-    const updated = entries.map(e => 
-      e.id === id ? { ...e, status: "Paid" as const, paidOn: viewDate } : e
-    );
-    saveToCloud(viewDate, updated);
-    toast.success("Marked as Paid");
-    const item = entries.find(e => e.id === id);
-    if (item) logActivity("MARKED_PAID", `Marked ${item.name} as Paid`);
-  }, [entries, pushUndo, viewDate, logActivity]);
+      );
+      setEntries(updated);
+      saveToCloud(viewDate, updated);
+      toast.success("Marked as Paid");
+      const item = entries.find((e) => e.id === id);
+      if (item) logActivity("MARKED_PAID", `Marked ${item.name} as Paid`);
+    },
+    [entries, pushUndo, viewDate, saveToCloud, logActivity]
+  );
 
-  const markPending = useCallback((id: string) => {
-    pushUndo();
-    setEntries((prev) =>
-      prev.map((e) =>
+  const markPending = useCallback(
+    (id: string) => {
+      pushUndo();
+      const updated = entries.map((e) =>
         e.id === id
           ? {
               ...e,
@@ -497,45 +424,57 @@ export function useEntries() {
               updatedAt: new Date().toISOString(),
             }
           : e
-      )
-    );
-    const item = entries.find(e => e.id === id);
-    if (item) logActivity("MARKED_PENDING", `Marked ${item.name} as Pending`);
-  }, [pushUndo, entries, logActivity]);
+      );
+      setEntries(updated);
+      saveToCloud(viewDate, updated);
+      toast.success("Marked as Pending");
+      const item = entries.find((e) => e.id === id);
+      if (item) logActivity("MARKED_PENDING", `Marked ${item.name} as Pending`);
+    },
+    [entries, pushUndo, viewDate, saveToCloud, logActivity]
+  );
 
-  const restoreEntry = useCallback((id: string) => {
-    setTrash((prev) => {
-      const entry = prev.find((e) => e.id === id);
-      if (entry) {
-        setEntries((curr) => [...curr, { ...entry, status: "Pending" }]);
+  const restoreEntry = useCallback(
+    (id: string) => {
+      const item = trash.find((e) => e.id === id);
+      if (item) {
+        setEntries((curr) => [...curr, { ...item, status: "Pending" }]);
+        setTrash((prev) => prev.filter((e) => e.id !== id));
+        toast.success("Restored entry");
+        logActivity("ENTRY_RESTORED", `Restored ${item.name} from trash`);
       }
-      return prev.filter((e) => e.id !== id);
-    });
-    toast.success("Restored entry");
-    const item = trash.find((e) => e.id === id);
-    if (item) logActivity("ENTRY_RESTORED", `Restored ${item.name} from trash`);
-  }, [trash, logActivity]);
+    },
+    [trash, logActivity]
+  );
 
-  const permanentDelete = useCallback((id: string) => {
-    const item = trash.find((e) => e.id === id);
-    setTrash((prev) => prev.filter((e) => e.id !== id));
-    if (item) logActivity("ENTRY_DELETED", `Permanently deleted ${item.name}`);
-  }, [trash, logActivity]);
+  const permanentDelete = useCallback(
+    (id: string) => {
+      const item = trash.find((e) => e.id === id);
+      setTrash((prev) => prev.filter((e) => e.id !== id));
+      if (item) {
+        logActivity("ENTRY_DELETED", `Permanently deleted ${item.name}`);
+      }
+    },
+    [trash, logActivity]
+  );
 
-  const reorder = useCallback((activeId: string, overId: string) => {
-    pushUndo();
-    const sorted = [...entries].sort((a, b) => (a.order || 0) - (b.order || 0));
-    const oldIdx = sorted.findIndex((e) => e.id === activeId);
-    const newIdx = sorted.findIndex((e) => e.id === overId);
-    
-    if (oldIdx === -1 || newIdx === -1) return;
-    
-    const moved = arrayMove(sorted, oldIdx, newIdx);
-    const updated = moved.map((e, i) => ({ ...e, order: i + 1 }));
-    
-    setEntries(updated);
-    saveToCloud(viewDate, updated);
-  }, [entries, pushUndo, viewDate]);
+  const reorder = useCallback(
+    (activeId: string, overId: string) => {
+      pushUndo();
+      const sorted = [...entries].sort((a, b) => (a.order || 0) - (b.order || 0));
+      const oldIdx = sorted.findIndex((e) => e.id === activeId);
+      const newIdx = sorted.findIndex((e) => e.id === overId);
+
+      if (oldIdx === -1 || newIdx === -1) return;
+
+      const moved = arrayMove(sorted, oldIdx, newIdx);
+      const updated = moved.map((e, i) => ({ ...e, order: i + 1 }));
+
+      setEntries(updated);
+      saveToCloud(viewDate, updated);
+    },
+    [entries, pushUndo, viewDate, saveToCloud]
+  );
 
   const undo = useCallback(() => {
     setUndoStack((stack) => {
@@ -573,7 +512,7 @@ export function useEntries() {
     isLocked,
     unlockDate,
     lockDate,
-    unlockedUntil: forceUnlocked[viewDate],
+    unlockedUntil,
     snapDates,
     searchQuery,
     setSearchQuery,

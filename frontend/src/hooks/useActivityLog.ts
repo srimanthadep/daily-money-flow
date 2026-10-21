@@ -65,7 +65,8 @@ export function useActivityLog() {
       return;
     }
 
-    const newLog = {
+    const newLogItem: ActivityLogEntry = {
+      id: crypto.randomUUID(),
       user_id: userId,
       username: user?.username || user?.firstName || user?.fullName || "Guest",
       action,
@@ -73,20 +74,29 @@ export function useActivityLog() {
       timestamp: new Date().toISOString(),
     };
 
+    // Optimistically prepend new log
+    setLogs((prev) => [newLogItem, ...prev]);
+
     try {
       // Direct database insert
-      const { error } = await supabase.from("activity_logs").insert([newLog]);
+      const { error } = await supabase.from("activity_logs").insert([
+        {
+          id: newLogItem.id,
+          user_id: newLogItem.user_id,
+          username: newLogItem.username,
+          action: newLogItem.action,
+          details: newLogItem.details,
+          timestamp: newLogItem.timestamp,
+        },
+      ]);
       
       if (error) {
         console.error("Supabase insert error:", error.message, error.details);
-      } else {
-        // Only refresh logs locally after successful server confirmation
-        fetchLogs();
       }
     } catch (e) {
       console.error("Critical failure during activity logging:", e);
     }
-  }, [isConfigured, userId, user, isLoaded, fetchLogs]);
+  }, [isConfigured, userId, user, isLoaded]);
 
   return { 
     logs, 

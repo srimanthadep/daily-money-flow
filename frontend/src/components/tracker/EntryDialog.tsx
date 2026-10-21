@@ -63,9 +63,9 @@ export function EntryDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md glass">
+      <DialogContent className="sm:max-w-md bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-2xl">
         <DialogHeader>
-          <DialogTitle className="text-base font-semibold">Add Person</DialogTitle>
+          <DialogTitle className="text-base font-semibold text-slate-900 dark:text-white">Add Person</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4 py-1">
@@ -77,7 +77,7 @@ export function EntryDialog({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Basha, Nithin..."
-              className="mt-1"
+              className="mt-1 dark:bg-slate-800/60 dark:border-slate-700"
               list="add-name-hints"
               autoFocus
               onKeyDown={(e) =>
@@ -106,7 +106,7 @@ export function EntryDialog({
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               placeholder="0"
-              className="mt-1 font-mono text-lg"
+              className="mt-1 font-mono text-lg dark:bg-slate-800/60 dark:border-slate-700"
               onWheel={(e) => e.currentTarget.blur()}
               onKeyDown={(e) => e.key === "Enter" && handleSave()}
             />
@@ -120,20 +120,20 @@ export function EntryDialog({
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Any details..."
-              className="mt-1 resize-none"
+              className="mt-1 resize-none dark:bg-slate-800/60 dark:border-slate-700"
               rows={2}
             />
           </div>
 
-          <div className="pt-2 border-t border-slate-50 mt-2">
+          <div className="pt-2 border-t border-slate-100 dark:border-slate-800 mt-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="p-1.5 bg-indigo-50 rounded-lg text-indigo-600">
+                <div className="p-1.5 bg-indigo-50 dark:bg-indigo-950/60 rounded-lg text-indigo-600 dark:text-indigo-400">
                   <Repeat className="w-3.5 h-3.5" />
                 </div>
                 <div className="space-y-0.5">
-                  <Label className="text-xs font-bold text-slate-700">Recurring Entry</Label>
-                  <p className="text-[10px] text-slate-400">Resets to pending every day</p>
+                  <Label className="text-xs font-bold text-slate-700 dark:text-slate-200">Recurring Entry</Label>
+                  <p className="text-[10px] text-slate-400 dark:text-slate-500">Resets to pending every day</p>
                 </div>
               </div>
               <Switch checked={isRecurring} onCheckedChange={setIsRecurring} />
@@ -143,10 +143,10 @@ export function EntryDialog({
               <div className="mt-3 flex items-center gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
                 <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Every</Label>
                 <Select value={frequency} onValueChange={(v: any) => setFrequency(v)}>
-                  <SelectTrigger className="h-8 text-xs font-bold rounded-lg border-slate-100 bg-slate-50/50">
+                  <SelectTrigger className="h-8 text-xs font-bold rounded-lg border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="rounded-xl border-slate-50">
+                  <SelectContent className="rounded-xl border-slate-200 dark:border-slate-700 dark:bg-slate-800">
                     <SelectItem value="Daily">Daily</SelectItem>
                     <SelectItem value="Weekly">Weekly</SelectItem>
                     <SelectItem value="Monthly">Monthly</SelectItem>
@@ -161,7 +161,7 @@ export function EntryDialog({
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={!name.trim() || !amount}>
+          <Button onClick={handleSave} disabled={!name.trim() || !amount} className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold">
             Add to Ledger
           </Button>
         </DialogFooter>

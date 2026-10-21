@@ -29,15 +29,15 @@ export function TrashDialog({
 }: Props) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg glass">
+      <DialogContent className="sm:max-w-lg bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-2xl">
         <DialogHeader>
-          <DialogTitle>
+          <DialogTitle className="text-slate-900 dark:text-white">
             Deleted ({trash.length})
           </DialogTitle>
         </DialogHeader>
 
         {trash.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-6 text-center">
+          <p className="text-sm text-slate-400 dark:text-slate-500 py-6 text-center">
             No deleted entries.
           </p>
         ) : (
@@ -45,11 +45,11 @@ export function TrashDialog({
             {trash.map((entry) => (
               <div
                 key={entry.id}
-                className="flex items-center justify-between p-3 bg-secondary/30 rounded-lg"
+                className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/60 rounded-xl border border-slate-100 dark:border-slate-800"
               >
                 <div>
-                  <span className="font-medium text-sm">{entry.name}</span>
-                  <span className="text-muted-foreground text-xs ml-2">
+                  <span className="font-bold text-sm text-slate-800 dark:text-slate-200">{entry.name}</span>
+                  <span className="text-slate-400 dark:text-slate-500 text-xs ml-2 font-mono">
                     {fmt(entry.amount)}
                   </span>
                 </div>
